@@ -1,0 +1,43 @@
+3D Rendering state machine overview
+
+<Begin frame render>
+1. Begin buffer clear
+
+2. Update transformation constants based on button presses since last frame render
+
+3. Wait for the buffer clear to end.
+
+4. Load the rendering pipeline with all the triangles
+
+    (This will have a few substates to not overflow the pipeline)
+
+5. Wait until all pipelines are empty
+
+6. Switch buffers
+<End frame render>
+
+
+
+Rendering pipeline overview
+
+1. Apply transformations to triangle and normal
+
+2. [End here if triangles normal vector Z value is negative]
+
+3. Project triangle position to screen space
+
+4. Convert normal vector Z value into brightness value.
+
+5. Send triangle upper half and lower half into triangle drawing queues
+
+
+
+
+(Each triangle plotter then gets access to it's own pixel plotter)
+
+
+
+
+Triangle plotting overview:
+
+The triangle plotters already have the relevant slopes due to their pipelined inputs

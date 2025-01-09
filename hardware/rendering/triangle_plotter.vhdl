@@ -1,0 +1,2 @@
+-- Do I do pipelined math here?
+-- That would end up with a lot of chip space (and mental effort) used for some small slope calculations, or do I accept a cost of ~96 clock cycles per triangle *here* (which the area of a half triangle can overtake)
