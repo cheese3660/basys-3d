@@ -234,7 +234,7 @@ begin
                             if pixel = singleScaleHorizontalStart then
                                 fractionalFramebufferX := 0;
                                 framebufferX := 0;
-                            else
+                            elsif framebufferX /= 127 then
                                 framebufferX := framebufferX + 1;
                             end if;
                         when DoubleRes =>
@@ -244,7 +244,7 @@ begin
                             elsif fractionalFramebufferX = 1 then
                                 framebufferX := framebufferX + 1;
                                 fractionalFramebufferX := 0;
-                            else
+                            elsif framebufferX /= 127 then
                                 fractionalFramebufferX := fractionalFramebufferX + 1;
                             end if;
                         when TripleRes =>
@@ -254,7 +254,7 @@ begin
                             elsif fractionalFramebufferX = 2 then
                                 framebufferX := framebufferX + 1;
                                 fractionalFramebufferX := 0;
-                            else
+                            elsif framebufferX /= 127 then
                                 fractionalFramebufferX := fractionalFramebufferX + 1;
                             end if;
                     end case;

@@ -94,7 +94,11 @@ package basys3d is
             readyMode: out std_logic;
             pipelineEmpty: out std_logic;
     
-            pixelInfo: out PixelEntry;
+            onWriteCycle: in std_logic;
+    
+            address: out std_logic_vector(13 downto 0);
+            writeData: out FramebufferEntry;
+            readData: in FramebufferEntry;
             plotEn: out std_logic
         );
     end component;
@@ -123,7 +127,11 @@ package basys3d is
             readyMode: out std_logic;
             pipelineEmpty: out std_logic;
     
-            pixelInfo: out PixelEntry;
+            onWriteCycle: in std_logic;
+    
+            address: out std_logic_vector(13 downto 0);
+            writeData: out FramebufferEntry;
+            readData: in FramebufferEntry;
             plotEn: out std_logic
         );
     end component;
@@ -195,26 +203,6 @@ package basys3d is
     
             writeEn: in std_logic;
             writeData: in FramebufferEntry
-        );
-    end component;
-
-    component PixelSynchronizer is
-        Port(
-            inA: in PixelEntry;
-            plotAEn: in std_logic;
-    
-            inB: in PixelEntry;
-            plotBEn: in std_logic;
-    
-            addrA: out std_logic_vector(13 downto 0);
-            inFbeA: in FramebufferEntry;
-            outFbeA: out FramebufferEntry;
-            writeAEn: out std_logic;
-    
-            addrB: out std_logic_vector(13 downto 0);
-            inFbeB: in FramebufferEntry;
-            outFbeB: out FramebufferEntry;
-            writeBEn: out std_logic
         );
     end component;
 
@@ -296,7 +284,11 @@ package basys3d is
     
             beginPlotEn: in std_logic;
     
-            pixelInfo: out PixelEntry;
+            onWriteCycle: in std_logic;
+    
+            address: out std_logic_vector(13 downto 0);
+            writeData: out FramebufferEntry;
+            readData: in FramebufferEntry;
             plotEn: out std_logic;
             pipelineEmpty: out std_logic;
             readyMode: out std_logic
@@ -304,6 +296,7 @@ package basys3d is
     end component;
 
     component LowerHalfPlotter is
+
         Port(
             clock: in std_logic;
             reset: in std_logic;
@@ -326,7 +319,11 @@ package basys3d is
     
             beginPlotEn: in std_logic;
     
-            pixelInfo: out PixelEntry;
+            onWriteCycle: in std_logic;
+    
+            address: out std_logic_vector(13 downto 0);
+            writeData: out FramebufferEntry;
+            readData: in FramebufferEntry;
             plotEn: out std_logic;
             pipelineEmpty: out std_logic;
             readyMode: out std_logic

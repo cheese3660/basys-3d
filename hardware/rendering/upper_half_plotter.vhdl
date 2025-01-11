@@ -30,7 +30,11 @@ entity UpperHalfPlotter is
 
         beginPlotEn: in std_logic;
 
-        pixelInfo: out PixelEntry;
+        onWriteCycle: in std_logic;
+
+        address: out std_logic_vector(13 downto 0);
+        writeData: out FramebufferEntry;
+        readData: in FramebufferEntry;
         plotEn: out std_logic;
         pipelineEmpty: out std_logic;
         readyMode: out std_logic
@@ -192,7 +196,10 @@ begin
         scanlineZ1 => scanlineZ1,
         scanlineColor => scanlineColor,
         scanlinePlotEn => startScanlineEn,
-        pixelInfo => pixelInfo,
+        onWriteCycle => onWriteCycle,
+        address => address,
+        writeData => writeData,
+        readData => readData,
         plotEn => plotEn,
         pipelineEmpty => scanlinePipelineEmpty,
         canAcceptScanline => readyForScanline

@@ -30,7 +30,11 @@ entity LowerHalfPipeline is
         readyMode: out std_logic;
         pipelineEmpty: out std_logic;
 
-        pixelInfo: out PixelEntry;
+        onWriteCycle: in std_logic;
+
+        address: out std_logic_vector(13 downto 0);
+        writeData: out FramebufferEntry;
+        readData: in FramebufferEntry;
         plotEn: out std_logic
     );
 end LowerHalfPipeline;
@@ -134,7 +138,10 @@ begin
         endY => associatedOut.endY,
         trigColor => associatedOut.trigColor,
         beginPlotEn => divideIsGiving,
-        pixelInfo => pixelInfo,
+        onWriteCycle => onWriteCycle,
+        address => address,
+        writeData => writeData,
+        readData => readData,
         plotEn => plotEn,
         pipelineEmpty => plotterEmpty,
         readyMode => plotterReadyMode

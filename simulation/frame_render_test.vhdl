@@ -14,6 +14,10 @@ architecture TB of FrameRenderTest is
     
     signal clock: std_logic;
     signal reset: std_logic;
+
+    signal address: std_logic_vector(13 downto 0);
+    signal entry: FramebufferEntry;
+    signal writeEn: std_logic;
 begin
 
     CLOCK_RESET: process
@@ -36,14 +40,28 @@ begin
         readingFromMemory => '0',
         endFrameEn => '0',
         
-        outEntry1 => (
+        readData => (
             depth => "0111111111111111",
             color => "00000"
         ),
 
-        outEntry2 => (
-            depth => "0111111111111111",
-            color => "00000"
-        )        
+        writeAddress => address,
+        writeData => entry,
+        writeEn => writeEn
     );
+    SCANLINE_REPORTER: process
+    begin
+        loop
+            wait until rising_edge(clock);
+            if writeEn = '1' and entry.color /= "00000" then
+                ReportPixel(
+                    (
+                        address => address,
+                        z => entry.depth,
+                        color => entry.color
+                    )
+                );
+            end if;
+        end loop;
+    end process;
 end TB;
