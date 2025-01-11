@@ -60,7 +60,6 @@ architecture Procedural of UpperHalfPlotter is
             Waiting, 
             ComparingAndClamping,
             WaitingOnScanline, 
-            DrawingScanline, 
             Adding
         );
 begin
@@ -137,28 +136,39 @@ begin
                     end if;
                         
                     if readyForScanline then
-                        state := DrawingScanline;
+                        if not y(7) then
+                            scanlineY <= unsigned(y(6 downto 0));
+                            scanlineX0 <= cx0;
+                            scanlineX1 <= cx1;
+                            scanlineZ0 <= z0;
+                            scanlineZ1 <= z1;
+                            scanlineColor <= color;
+                            startScanlineEn <= '1';
+                        end if;
+                        if lastIter then
+                            state := Waiting;
+                        else
+                            state := Adding;
+                        end if;
                     else
                         state := WaitingOnScanline;
                     end if;
                 when WaitingOnScanline =>
                     if readyForScanline then
-                        state := DrawingScanline;
-                    end if;
-                when DrawingScanline =>
-                    if not y(7) then
-                        scanlineY <= unsigned(y(6 downto 0));
-                        scanlineX0 <= cx0;
-                        scanlineX1 <= cx1;
-                        scanlineZ0 <= z0;
-                        scanlineZ1 <= z1;
-                        scanlineColor <= color;
-                        startScanlineEn <= '1';
-                    end if;
-                    if lastIter then
-                        state := Waiting;
-                    else
-                        state := Adding;
+                        if not y(7) then
+                            scanlineY <= unsigned(y(6 downto 0));
+                            scanlineX0 <= cx0;
+                            scanlineX1 <= cx1;
+                            scanlineZ0 <= z0;
+                            scanlineZ1 <= z1;
+                            scanlineColor <= color;
+                            startScanlineEn <= '1';
+                        end if;
+                        if lastIter then
+                            state := Waiting;
+                        else
+                            state := Adding;
+                        end if;
                     end if;
                 when Adding =>
                     y := y + 1;

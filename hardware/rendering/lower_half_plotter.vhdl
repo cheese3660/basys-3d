@@ -60,7 +60,6 @@ architecture Procedural of LowerHalfPlotter is
             Waiting, 
             ComparingAndClamping,
             WaitingOnScanline, 
-            DrawingScanline, 
             Adding
         );
 begin
@@ -112,7 +111,7 @@ begin
                         z0 := startZ;
                         z1 := startZ;
                         y := startY;
-                        maxY := endY;
+                        minY := endY;
                         color := trigColor;
                         state := ComparingAndClamping;
                     end if;
@@ -137,28 +136,39 @@ begin
                     if y <= minY then
                         state := Waiting;
                     elsif readyForScanline then
-                        state := DrawingScanline;
+                        if not y(7) then
+                            scanlineY <= unsigned(y(6 downto 0));
+                            scanlineX0 <= cx0;
+                            scanlineX1 <= cx1;
+                            scanlineZ0 <= z0;
+                            scanlineZ1 <= z1;
+                            scanlineColor <= color;
+                            startScanlineEn <= '1';
+                        end if;
+                        if lastIter then
+                            state := Waiting;
+                        else
+                            state := Adding;
+                        end if;
                     else
                         state := WaitingOnScanline;
                     end if;
                 when WaitingOnScanline =>
                     if readyForScanline then
-                        state := DrawingScanline;
-                    end if;
-                when DrawingScanline =>
-                    if not y(7) then
-                        scanlineY <= unsigned(y(6 downto 0));
-                        scanlineX0 <= cx0;
-                        scanlineX1 <= cx1;
-                        scanlineZ0 <= z0;
-                        scanlineZ1 <= z1;
-                        scanlineColor <= color;
-                        startScanlineEn <= '1';
-                    end if;
-                    if lastIter then
-                        state := Waiting;
-                    else
-                        state := Adding;
+                        if not y(7) then
+                            scanlineY <= unsigned(y(6 downto 0));
+                            scanlineX0 <= cx0;
+                            scanlineX1 <= cx1;
+                            scanlineZ0 <= z0;
+                            scanlineZ1 <= z1;
+                            scanlineColor <= color;
+                            startScanlineEn <= '1';
+                        end if;
+                        if lastIter then
+                            state := Waiting;
+                        else
+                            state := Adding;
+                        end if;
                     end if;
                 when Adding =>
                     y := y - 1;
@@ -170,4 +180,24 @@ begin
             end case;
         end if;
     end process;
+
+    SCANLINE_PLOTTER: ScanlinePipeline port map(
+        clock => clock,
+        reset => reset,
+        scanlineY => scanlineY,
+        scanlineX0 => scanlineX0,
+        scanlineX1 => scanlineX1,
+        scanlineZ0 => scanlineZ0,
+        scanlineZ1 => scanlineZ1,
+        scanlineColor => scanlineColor,
+        scanlinePlotEn => startScanlineEn,
+        pixelInfo => pixelInfo,
+        plotEn => plotEn,
+        pipelineEmpty => scanlinePipelineEmpty,
+        canAcceptScanline => readyForScanline
+    );
+
+    pipelineEmpty <= waitingMode and scanlinePipelineEmpty;
+    
+    readyMode <= waitingMode;
 end Procedural;

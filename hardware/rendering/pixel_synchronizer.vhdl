@@ -22,13 +22,11 @@ entity PixelSynchronizer is
         addrB: out std_logic_vector(13 downto 0);
         inFbeB: in FramebufferEntry;
         outFbeB: out FramebufferEntry;
-        writeBEn: out std_logic;
+        writeBEn: out std_logic
     );
 end PixelSynchronizer;
 
 architecture Procedural of PixelSynchronizer is
-    signal stopA: std_logic;
-    signal stopB: std_logic;
 begin
     addrA <= inA.address;
     outFbeA <= (
@@ -42,31 +40,6 @@ begin
         color => inB.color
     );
 
-    SYNCHRONIZE: process(inA, inB, inFbeA, inFbeB) is
-        variable aMask: boolean;
-        variable bMask: boolean;
-    begin
-        aMask := inA.z < inFbeA.depth;
-        bMask := inB.z < inFbeB.depth;
-        
-        if inA.address = inB.address and plotAEn and plotBEn then
-            if inA.z < inB.z then
-                bMask := false;
-            else
-                aMask := false;
-            end if;
-        end if;
-
-        if aMask then
-            writeAEn <= plotAEn;
-        else
-            writeAEn <= '0';
-        end if;
-
-        if bMask then
-            writeBEn <= plotBEn;
-        else
-            writeBEn <= '0';
-        end if;
-    end process;
+    writeAEn <= plotAEn when inA.z < inFbeA.depth else '0';
+    writeBEn <= plotBEn when inB.z < inFbeB.depth else '0';
 end Procedural;
