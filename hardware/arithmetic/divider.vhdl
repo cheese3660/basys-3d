@@ -3,7 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.basys3d.all;
+use work.basys3d_arithmetic.all;
 
 entity Divider is        
     generic(
@@ -18,9 +18,6 @@ entity Divider is
 
         -- And how many divisors are being used (grouped evenly between them)
         divisorCount: integer;
-
-        -- How many bits of division do we want to do per clock cycle, the dividendSize + dividendShift needs to divide this evenly
-        bitsPerClockCycle: integer := 1;
 
         type associated_t
     );

@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
+use work.basys3d_rendering.all;
 
 entity FrameRenderer is
     port (
@@ -34,35 +35,37 @@ end FrameRenderer;
 
 architecture Procedural of FrameRenderer is
     -- Scanline drawing signals
-    signal s1y: unsigned(6 downto 0);
-    signal s2y: unsigned(6 downto 0);
-    signal s1x0: signed(7 downto 0);
-    signal s1x1: signed(7 downto 0);
-    signal s2x0: signed(7 downto 0);
-    signal s2x1: signed(7 downto 0);
-    signal s1color: std_logic_vector(4 downto 0);
-    signal s2color: std_logic_vector(4 downto 0);
-    signal s1drawLineEn: std_logic;
-    signal s2drawLineEn: std_logic;
 
-    signal s1Empty: std_logic;
-    signal s2Empty: std_logic;
+    signal x1: signed(15 downto 0);
+    signal y1: signed(7 downto 0);
+    signal z1: signed(15 downto 0);
+
+    signal x2: signed(15 downto 0);
+    signal y2: signed(7 downto 0);
+    signal z2: signed(15 downto 0);
+
+    signal x3: signed(15 downto 0);
+    signal y3: signed(7 downto 0);
+    signal z3: signed(15 downto 0);
+
+    signal color: std_logic_vector(4 downto 0);
+
+    signal plotTriangleEn: std_logic;
+    signal plotterReadyMode: std_logic;
+
+    signal plotterEmpty: std_logic;
 
     -- Pixel drawing signals
-    signal address1: std_logic_vector(13 downto 0);
-    signal entry1: FramebufferEntry;
-    signal plot1: std_logic;
-    signal address2: std_logic_vector(13 downto 0);
-    signal entry2: FramebufferEntry;
-    signal plot2: std_logic;
-    
+    signal plotterWriteAddress: std_logic_vector(13 downto 0);
+    signal plotterWriteData: FramebufferEntry;
+    signal plotterWriteEn: std_logic;
+
     -- Support signals
     signal countFpsEn: std_logic;
-    signal clearingBufferMode: std_logic;
+    signal clearingBufferMode: std_logic := '0';
     signal startBufferClearEn: std_logic;
 
-    signal clearAddress: unsigned(13 downto 0);
-    signal wantToWrite: std_logic;
+    signal clearAddress: unsigned(13 downto 0) := (others => '0');
 
 
     signal bufferSelectInt: std_logic;
@@ -71,57 +74,387 @@ architecture Procedural of FrameRenderer is
 begin
 
     bufferSelect <= bufferSelectInt;
-    -- Scanline controller
 
-    SCANLINE_CONTROLLER: process(clock, reset)
-        type controller_state_t is (StartingClear, WaitingForClearToEnd, AddingScanlines0, AddingScanlines1, WaitingForRender, FlippingBuffers);
+    TRIANGLE_CONTROLLER: process(clock, reset)
+        type controller_state_t is (
+            StartingClear, 
+            WaitingForClearToEnd, 
+
+            -- Let's hard code all the triangles
+            AddingFaceTriangle1,
+            AddingFaceTriangle2,
+            AddingFaceTriangle3,
+            AddingFaceTriangle4,
+            AddingFaceTriangle5,
+            AddingFaceTriangle6,
+            AddingFaceTriangle7,
+            AddingFaceTriangle8,
+
+            AddingEyeTriangle1,
+            AddingEyeTriangle2,
+            AddingEyeTriangle3,
+            AddingEyeTriangle4,
+
+            AddingNoseTriangle,
+            AddingMouthTriangle,
+
+            WaitingForRender, 
+            FlippingBuffers, 
+            Stall);
 
         variable state: controller_state_t := StartingClear;
+
+        variable stallCycles: integer range 0 to 3 := 0;
     begin
         if reset then
             state := StartingClear;
             bufferSelectInt <= '0';
+            stallCycles := 0;
         elsif rising_edge(clock) then
             startBufferClearEn <= '0';
-            s1y <= (others => '0');
-            s2y <= (others => '0');
-            s1x0 <= (others => '0');
-            s2x0 <= (others => '0');
-            s1Color <= (others => '0');
-            s2Color <= (others => '0');
-            s1drawLineEn <= '0';
-            s2drawLineEn <= '0';
+
             countFpsEn <= '0';
+            x1 <= (others => '0');
+            y1 <= (others => '0');
+            z1 <= (others => '0');
+
+            x2 <= (others => '0');
+            y2 <= (others => '0');
+            z2 <= (others => '0');
+
+            x3 <= (others => '0');
+            y3 <= (others => '0');
+            z3 <= (others => '0');
+
+            color <= "00000";
+
+            plotTriangleEn <= '0';
             case state is
                 when StartingClear =>
                     startBufferClearEn <= '1';
                     state := WaitingForClearToEnd;
+                    stallCycles := 3;
                 when WaitingForClearToEnd =>
-                    if not clearingBufferMode and not startBufferClearEn then
-                        state := AddingScanlines0;
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif not clearingBufferMode and not startBufferClearEn then
+                        state := AddingFaceTriangle1;
                     end if;
-                when AddingScanlines0 =>
-                    -- We need to set up all the values
-                    s1y <= to_unsigned(20,7);
-                    s2y <= to_unsigned(40,7);
-                    s1x0 <= to_signed(15,8);
-                    s2x0 <= to_signed(-5,8);
-                    s1x1 <= to_signed(120,8);
-                    s2x1 <= to_signed(120,8);
-                    s1Color <= "01111";
-                    s2Color <= "11100";
-                    s1drawLineEn <= '1';
-                    s2drawLineEn <= '1';
-                    state := AddingScanlines1;
-                when AddingScanlines1 =>
-                    s1y <= to_unsigned(60,7);
-                    s1x0 <= to_signed(60,8);
-                    s1x1 <= to_signed(30,8);
-                    s1Color <= "00111";
-                    s1drawLineEn <= '1';
-                    state := WaitingForRender;
+                when AddingFaceTriangle1 =>
+                    -- Start with the flat triangles to be able to bang them through the pipeline
+                    x1 <= to_signed(16*256, 16);
+                    y1 <= to_signed(64, 8);
+                    z1 <= to_signed(1 * 256, 16);
+
+                    x2 <= to_signed(30*256,16);
+                    y2 <= to_signed(30,8);
+                    z2 <= to_signed(1 * 256, 16);
+
+                    x3 <= to_signed(64*256,16);
+                    y3 <= to_signed(64, 8);
+                    z3 <= to_signed(1 * 256, 16);
+
+                    color <= "01111";
+
+                    plotTriangleEn <= '1';
+                    stallCycles := 3;
+                    state := AddingFaceTriangle2;
+                when AddingFaceTriangle2 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+
+                        x2 <= to_signed(94*256,16);
+                        y2 <= to_signed(30,8);
+                        z2 <= to_signed(1 * 256, 16);
+
+                        x3 <= to_signed(112*256,16);
+                        y3 <= to_signed(64, 8);
+                        z3 <= to_signed(1 * 256, 16);
+
+                        color <= "01111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingFaceTriangle3;
+                    end if;
+                when AddingFaceTriangle3 =>
+                
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(16*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+
+                        x2 <= to_signed(30*256,16);
+                        y2 <= to_signed(94,8);
+                        z2 <= to_signed(1 * 256, 16);
+
+                        x3 <= to_signed(64*256,16);
+                        y3 <= to_signed(64, 8);
+                        z3 <= to_signed(1 * 256, 16);
+
+                        color <= "01111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingFaceTriangle4;
+                    end if;
+                when AddingFaceTriangle4 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+
+                        x2 <= to_signed(112*256,16);
+                        y2 <= to_signed(64,8);
+                        z2 <= to_signed(1 * 256, 16);
+
+                        x3 <= to_signed(94*256,16);
+                        y3 <= to_signed(94, 8);
+                        z3 <= to_signed(1 * 256, 16);
+
+                        color <= "01111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingFaceTriangle5;
+                    end if;
+                when AddingFaceTriangle5 =>
+                    -- Now lets stop doing the flat triangles
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+
+                        x2 <= to_signed(30*256,16);
+                        y2 <= to_signed(30,8);
+                        z2 <= to_signed(1 * 256, 16);
+
+                        x3 <= to_signed(64*256,16);
+                        y3 <= to_signed(16, 8);
+                        z3 <= to_signed(1 * 256, 16);
+
+                        color <= "01111";
+
+                        stallCycles := 3;
+                        plotTriangleEn <= '1';
+                        state := AddingFaceTriangle6;
+                    end if;
+                when AddingFaceTriangle6 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+    
+                        x2 <= to_signed(64*256,16);
+                        y2 <= to_signed(16,8);
+                        z2 <= to_signed(1 * 256, 16);
+    
+                        x3 <= to_signed(94*256,16);
+                        y3 <= to_signed(30, 8);
+                        z3 <= to_signed(1 * 256, 16);
+    
+                        color <= "01111";
+    
+                        stallCycles := 3;
+                        plotTriangleEn <= '1';
+                        state := AddingFaceTriangle7;
+                    end if;
+                when AddingFaceTriangle7 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+
+                        x2 <= to_signed(94*256,16);
+                        y2 <= to_signed(94,8);
+                        z2 <= to_signed(1 * 256, 16);
+
+                        x3 <= to_signed(64*256,16);
+                        y3 <= to_signed(112, 8);
+                        z3 <= to_signed(1 * 256, 16);
+
+                        color <= "01111";
+
+                        stallCycles := 3;
+                        plotTriangleEn <= '1';
+                        state := AddingFaceTriangle8;
+                    end if;
+
+                when AddingFaceTriangle8 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(1 * 256, 16);
+
+                        x2 <= to_signed(64*256,16);
+                        y2 <= to_signed(112,8);
+                        z2 <= to_signed(1 * 256, 16);
+
+                        x3 <= to_signed(30*256,16);
+                        y3 <= to_signed(94, 8);
+                        z3 <= to_signed(1 * 256, 16);
+
+                        color <= "01111";
+
+                        stallCycles := 3;
+                        plotTriangleEn <= '1';
+                        state := AddingEyeTriangle1;
+                    end if;
+                
+                when AddingEyeTriangle1 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(40*256, 16);
+                        y1 <= to_signed(48, 8);
+                        z1 <= to_signed(0 * 256, 16);
+    
+                        x2 <= to_signed(48*256,16);
+                        y2 <= to_signed(40,8);
+                        z2 <= to_signed(0 * 256, 16);
+    
+                        x3 <= to_signed(56*256,16);
+                        y3 <= to_signed(48, 8);
+                        z3 <= to_signed(0 * 256, 16);
+    
+                        color <= "00111";
+    
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingEyeTriangle2;
+                    end if;
+                when AddingEyeTriangle2 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(40*256, 16);
+                        y1 <= to_signed(48, 8);
+                        z1 <= to_signed(0 * 256, 16);
+
+                        x2 <= to_signed(48*256,16);
+                        y2 <= to_signed(56,8);
+                        z2 <= to_signed(0 * 256, 16);
+
+                        x3 <= to_signed(56*256,16);
+                        y3 <= to_signed(48, 8);
+                        z3 <= to_signed(0 * 256, 16);
+
+                        color <= "00111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingEyeTriangle3;
+                    end if;
+                when AddingEyeTriangle3 =>
+                
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(72*256, 16);
+                        y1 <= to_signed(48, 8);
+                        z1 <= to_signed(0 * 256, 16);
+
+                        x2 <= to_signed(80*256,16);
+                        y2 <= to_signed(40,8);
+                        z2 <= to_signed(0 * 256, 16);
+
+                        x3 <= to_signed(88*256,16);
+                        y3 <= to_signed(48, 8);
+                        z3 <= to_signed(0 * 256, 16);
+
+                        color <= "00111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingEyeTriangle4;
+                    end if;
+                when AddingEyeTriangle4 =>
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(72*256, 16);
+                        y1 <= to_signed(48, 8);
+                        z1 <= to_signed(0 * 256, 16);
+
+                        x2 <= to_signed(80*256,16);
+                        y2 <= to_signed(56,8);
+                        z2 <= to_signed(0 * 256, 16);
+
+                        x3 <= to_signed(88*256,16);
+                        y3 <= to_signed(48, 8);
+                        z3 <= to_signed(0 * 256, 16);
+
+                        color <= "00111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingNoseTriangle;
+                    end if;
+                when AddingNoseTriangle =>
+                
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(64*256, 16);
+                        y1 <= to_signed(64, 8);
+                        z1 <= to_signed(0 * 256, 16);
+
+                        x2 <= to_signed(60*256,16);
+                        y2 <= to_signed(68,8);
+                        z2 <= to_signed(0 * 256, 16);
+
+                        x3 <= to_signed(68*256,16);
+                        y3 <= to_signed(68, 8);
+                        z3 <= to_signed(0 * 256, 16);
+
+                        color <= "10011";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := AddingMouthTriangle;
+                    end if;
+                when AddingMouthTriangle =>                
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterReadyMode then
+                        x1 <= to_signed(44*256, 16);
+                        y1 <= to_signed(80, 8);
+                        z1 <= to_signed(0 * 256, 16);
+
+                        x2 <= to_signed(64*256,16);
+                        y2 <= to_signed(88,8);
+                        z2 <= to_signed(0 * 256, 16);
+
+                        x3 <= to_signed(84*256,16);
+                        y3 <= to_signed(80, 8);
+                        z3 <= to_signed(0 * 256, 16);
+
+                        color <= "11111";
+
+                        plotTriangleEn <= '1';
+                        stallCycles := 3;
+                        state := WaitingForRender;
+                    end if;
                 when WaitingForRender =>
-                    if s1Empty and s2Empty then
+                    if stallCycles > 0 then
+                        stallCycles := stallCycles - 1;
+                    elsif plotterEmpty and not plotTriangleEn then
                         countFpsEn <= '1';
                         state := FlippingBuffers;
                     end if;
@@ -130,55 +463,39 @@ begin
                         bufferSelectInt <= not bufferSelectInt;
                         state := StartingClear;
                     end if;
+                when Stall =>
+                    state := Stall;
             end case;
         end if;
     end process;
 
-    WRITE_SELECT_SWITCH: process(clock)
-    begin
-        if rising_edge(clock) then
-            scanlineWriteSelect <= not scanlineWriteSelect;
-        end if;
-    end process;
-
-    -- Scanline drawers
-    SCANLINE_GENERATOR_1: ScanlinePipeline port map(
+    -- Triangle plotter
+    TRIANGLE_PLOTTER: TrianglePlotter port map (
         clock => clock,
         reset => reset,
+        x1 => x1,
+        y1 => y1,
+        z1 => z1,
+        x2 => x2,
+        y2 => y2,
+        z2 => z2,
+        x3 => x3,
+        y3 => y3,
+        z3 => z3,
 
-        scanlineY => s1y,
-        scanlineX0 => s1x0,
-        scanlineX1 => s1x1,
-        scanlineZ0 => (others => '0'),
-        scanlineZ1 => (others => '0'),
-        scanlineColor => s1color,
-        scanlinePlotEn => s1drawLineEn,
-        pipelineEmpty => s1Empty,
-        onWriteCycle => scanlineWriteSelect,
-        address => address1,
-        writeData => entry1,
+        color => color,
+
+        plotTriangleEn => plotTriangleEn,
+
+        pipelineEmpty => plotterEmpty,
+
+        readyMode => plotterReadyMode,
+
+        writeAddress => plotterWriteAddress,
+        writeData => plotterWriteData,
+        readAddress => readAddress,
         readData => readData,
-        plotEn => plot1
-    );
-
-
-    SCANLINE_GENERATOR_2: ScanlinePipeline port map(
-        clock => clock,
-        reset => reset,
-
-        scanlineY => s2y,
-        scanlineX0 => s2x0,
-        scanlineX1 => s2x1,
-        scanlineZ0 => (others => '0'),
-        scanlineZ1 => (others => '0'),
-        scanlineColor => s2color,
-        scanlinePlotEn => s2drawLineEn,
-        pipelineEmpty => s2Empty,
-        onWriteCycle => not scanlineWriteSelect,
-        address => address2,
-        writeData => entry2,
-        readData => readData,
-        plotEn => plot2
+        writeEn => plotterWriteEn
     );
 
     -- Support logic for the renderer
@@ -186,7 +503,7 @@ begin
     begin
         if rising_edge(clock) then
             if clearingBufferMode then
-                if clearAddress = "111111111111" then
+                if clearAddress = "11111111111111" then
                     clearingBufferMode <= '0';
                 else
                     clearAddress <= clearAddress + 1;
@@ -195,15 +512,6 @@ begin
                 clearAddress <= (others => '0');
                 clearingBufferMode <= '1';
             end if;
-        end if;
-    end process;
-
-    READ_MUX: process(all)
-    begin
-        if scanlineWriteSelect then
-            readAddress <= address1;
-        else
-            readAddress <= address2;
         end if;
     end process;
 
@@ -217,15 +525,9 @@ begin
             );
             writeAddress <= std_logic_vector(clearAddress);
         else
-            if scanlineWriteSelect then
-                writeEn <= plot2;
-                writeData <= entry2;
-                writeAddress <= address2;
-            else
-                writeEn <= plot1;
-                writeData <= entry1;
-                writeAddress <= address1;
-            end if;
+            writeEn <= plotterWriteEn;
+            writeData <= plotterWriteData;
+            writeAddress <= plotterWriteAddress;
         end if;
     end process;
 

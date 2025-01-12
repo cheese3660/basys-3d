@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
+use work.basys3d_rendering.all;
 
 entity Basys3Wrapper is
     port (
@@ -86,6 +87,8 @@ begin
     );
     
     led(15) <= readingFromMemory;
+    
+    led(14) <= bufferSelect;
     
     led(13 downto 0) <= vgaAddress;
     

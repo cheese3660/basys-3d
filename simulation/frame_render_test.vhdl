@@ -5,6 +5,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
+use work.basys3d_rendering.all;
 
 entity FrameRenderTest is
 
@@ -16,8 +17,14 @@ architecture TB of FrameRenderTest is
     signal reset: std_logic;
 
     signal address: std_logic_vector(13 downto 0);
+    signal readAddress: std_logic_vector(13 downto 0);
+    signal readData: FramebufferEntry;
     signal entry: FramebufferEntry;
     signal writeEn: std_logic;
+
+    signal bufferSelect: std_logic;
+    signal vgaAddress: std_logic_vector(13 downto 0);
+    signal vgaData: FramebufferEntry;
 begin
 
     CLOCK_RESET: process
@@ -34,34 +41,55 @@ begin
         end loop;
     end process;
 
-    DRIVEN: FrameRenderer port map(
+    
+    
+    DUAL_BUFFER: DualBuffer port map (
         clock => clock,
-        reset => reset,
-        readingFromMemory => '0',
-        endFrameEn => '0',
         
-        readData => (
-            depth => "0111111111111111",
-            color => "00000"
-        ),
-
+        currentWriteBuffer => bufferSelect,
+        vgaAddress => vgaAddress,
+        outVga => vgaData,
+    
+        readAddress => readAddress,
         writeAddress => address,
+        readData => readData,
         writeData => entry,
         writeEn => writeEn
     );
+
+
+    -- Only clock it for the first frame
+    DRIVEN: FrameRenderer port map(
+        clock => clock and not bufferSelect,
+        reset => reset,
+        readingFromMemory => '0',
+        endFrameEn => '0',
+        readAddress => readAddress,
+        readData => readData,
+        writeAddress => address,
+        writeData => entry,
+        writeEn => writeEn,
+        bufferSelect => bufferSelect
+    );
     SCANLINE_REPORTER: process
     begin
-        loop
+        wait for 1000 ns;
+        wait until bufferSelect = '1';
+        for i in 0 to 16383 loop
+            vgaAddress <= std_logic_vector(to_unsigned(i,14));
             wait until rising_edge(clock);
-            if writeEn = '1' and entry.color /= "00000" then
+            wait until rising_edge(clock);
+            if vgaData.color /= "00000" then
                 ReportPixel(
                     (
-                        address => address,
-                        z => entry.depth,
-                        color => entry.color
+                        address => vgaAddress,
+                        z => vgaData.depth,
+                        color => vgaData.color
                     )
                 );
             end if;
+            wait until rising_edge(clock);
         end loop;
+        wait;
     end process;
 end TB;

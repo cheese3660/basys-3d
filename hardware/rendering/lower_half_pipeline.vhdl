@@ -4,7 +4,8 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
-
+use work.basys3d_arithmetic.all;
+use work.basys3d_rendering.all;
 
 entity LowerHalfPipeline is
     Port(
@@ -30,6 +31,7 @@ entity LowerHalfPipeline is
         readyMode: out std_logic;
         pipelineEmpty: out std_logic;
 
+        onReadCycle: in std_logic;
         onWriteCycle: in std_logic;
 
         address: out std_logic_vector(13 downto 0);
@@ -40,7 +42,6 @@ entity LowerHalfPipeline is
 end LowerHalfPipeline;
 
 architecture Procedural of LowerHalfPipeline is
-
     type PipelineAssociated is record
         minX: signed(7 downto 0);
         maxX: signed(7 downto 0);
@@ -66,9 +67,49 @@ architecture Procedural of LowerHalfPipeline is
     -- Plotter values
     signal plotterReadyMode: std_logic;
     signal plotterEmpty: std_logic;
+
+    -- Divider redeclaration because it otherwise crashes the simulator?
+    component Divider is
+        generic(
+            dividendSize: integer;
+            divisorSize: integer;
+    
+            -- dividendSize + dividendShift => quotient size (and pipeline length)
+            dividendShift: integer;
+    
+            -- How many dividends are being computed in parallel
+            dividendCount: integer;
+    
+            -- And how many divisors are being used (grouped evenly between them)
+            divisorCount: integer;
+    
+            type associated_t
+        );
+    
+        port(
+            clock: in std_logic;
+            reset: in std_logic;
+    
+            nextCanAccept: in std_logic;
+    
+            dividendsIn: in divider_array_t(0 to dividendCount-1)(dividendSize-1 downto 0);
+            divisorsIn: in divider_array_t(0 to divisorCount-1)(divisorSize-1 downto 0);
+            associatedIn: in associated_t;
+            hasValue: in std_logic;
+    
+            quotientsOut: out divider_array_t(0 to dividendCount-1)(dividendSize+dividendShift - 1 downto 0);
+            associatedOut: out associated_t;
+            -- Active when the next stage can accept a value, and this actually has a value
+            givingValue: out std_logic;
+            -- Active always when this actually has a value
+            hasValueInLastStage: out std_logic;
+            canAccept: out std_logic;
+            empty: out std_logic
+        );
+    end component;
 begin
 
-    readyMode <= divideCanAccept or (not hasValue);
+    readyMode <= divideCanAccept;
 
     FEED_CALCULATOR: process(clock,reset) is
     begin
@@ -76,7 +117,7 @@ begin
             divideHasValue <= '0';
         elsif rising_edge(clocK) then
             if divideCanAccept then
-                if plotEn then
+                if hasValue then
                     dividendsIn(0) <= x3 - x1;
                     dividendsIn(1) <= z3 - z1;
                     divisorsIn(0) <= y3 - y1;
@@ -111,7 +152,7 @@ begin
     ) port map (
         clock => clock,
         reset => reset,
-        nextCanAccept => plotterReadyMode,
+        nextCanAccept => plotterReadyMode and not divideIsGiving,
         dividendsIn => dividendsIn,
         divisorsIn => divisorsIn,
         associatedIn => associatedIn,
@@ -138,6 +179,7 @@ begin
         endY => associatedOut.endY,
         trigColor => associatedOut.trigColor,
         beginPlotEn => divideIsGiving,
+        onReadCycle => onReadCycle,
         onWriteCycle => onWriteCycle,
         address => address,
         writeData => writeData,

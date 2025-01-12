@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
+use work.basys3d_rendering.all;
 
 entity DualBuffer is
     port(

@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
+use work.basys3d_rendering.all;
 
 
 -- This will plot upper half triangles, given the precomputed information
@@ -30,6 +31,7 @@ entity UpperHalfPlotter is
 
         beginPlotEn: in std_logic;
 
+        onReadCycle: in std_logic;
         onWriteCycle: in std_logic;
 
         address: out std_logic_vector(13 downto 0);
@@ -177,9 +179,9 @@ begin
                 when Adding =>
                     y := y + 1;
                     x0 := x0 + xs1;
-                    x1 := x1 + xs1;
+                    x1 := x1 + xs2;
                     z0 := z0 + zs1;
-                    z1 := z1 + zs1;
+                    z1 := z1 + zs2;
                     state := ComparingAndClamping;
             end case;
         end if;
@@ -196,6 +198,7 @@ begin
         scanlineZ1 => scanlineZ1,
         scanlineColor => scanlineColor,
         scanlinePlotEn => startScanlineEn,
+        onReadCycle => onReadCycle,
         onWriteCycle => onWriteCycle,
         address => address,
         writeData => writeData,

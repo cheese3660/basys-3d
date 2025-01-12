@@ -36,14 +36,10 @@ begin
     WRITE_DATA: process(clock)
     begin
         if rising_edge(clock) then
-            if writeEnable = '1' and readAddress = writeAddress then
-                readData <= writeData;
-            else
-                readData <= fb(readAddressInt);
-            end if;
             if writeEnable then
                 fb(writeAddressInt) <= writeData;
             end if;
+            readData <= fb(readAddressInt);
         end if;
     end process;
 end Procedural;
