@@ -44,6 +44,28 @@ package basys3d_arithmetic is
         z: in integer
     ) return Vector16;
 
+    type TrigCalcType is (
+        Sine,
+        Cosine
+    );
+
+    component TrigCalculator is
+        port(
+            clock: in std_logic;
+            reset: in std_logic;
+            
+            -- The angle being operated on
+            theta: in signed(15 downto 0);
+    
+            -- The operation to compute
+            operation: in TrigCalcType;
+    
+            beginCalculation: in std_logic;
+    
+            result: out signed(15 downto 0);
+            operationDoneMode: out std_logic
+        );
+    end component;
 end basys3d_arithmetic;
 
 package body basys3d_arithmetic is

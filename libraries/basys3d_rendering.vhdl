@@ -388,4 +388,21 @@ package basys3d_rendering is
             writeEn: out std_logic
         );
     end component;
+    component MatrixGenerator is
+        port(
+            clock: in std_logic;
+            reset: in std_logic;
+    
+            -- Rotation angle on the X axis
+            thetaA: in signed(15 downto 0);
+    
+            -- Rotation angle on the Y axis
+            thetaB: in signed(15 downto 0);
+    
+            beginGenerate: in std_logic;
+    
+            transformationMatrix: out Matrix16;
+            generationDoneMode: out std_logic
+        );
+    end component;
 end basys3d_rendering;

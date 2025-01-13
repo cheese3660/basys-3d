@@ -418,7 +418,10 @@ begin
         end if;
     end process;
 
-    PROJECTOR: ProjectionCalculator
+    PROJECTOR: ProjectionCalculator generic map (
+        -- Let's input a smaller Z' for these tests (default is 112)
+        Z_PRIME => to_unsigned(integer(96*real(256)), 16)
+    )
     port map (
       clock              => clock,
       reset              => reset,

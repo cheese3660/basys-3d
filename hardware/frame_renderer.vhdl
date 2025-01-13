@@ -61,16 +61,22 @@ architecture Procedural of FrameRenderer is
 
     signal clearAddress: unsigned(13 downto 0) := (others => '0');
 
-
     signal bufferSelectInt: std_logic;
+
+    -- Rotation signals
+    signal thetaX: signed(15 downto 0) := (others => '0');
+    signal thetaY: signed(15 downto 0) := (others => '0');
+    signal transformationMatrix: Matrix16;
+    signal beginGenerate: std_logic;
+    signal generationDoneMode: std_logic;
 begin
 
     bufferSelect <= bufferSelectInt;
 
     TRIANGLE_CONTROLLER: process(clock, reset)
         type controller_state_t is (
-            StartingClear, 
-            WaitingForClearToEnd, 
+            StartingClearAndTransformationGen,
+            WaitingForClearAndTransformationToEnd, 
 
             -- Let's hard code all the triangles
             AddingTetrahedralTriangle1,
@@ -84,13 +90,13 @@ begin
             FlippingBuffers, 
             Stall);
 
-        variable state: controller_state_t := StartingClear;
+        variable state: controller_state_t := StartingClearAndTransformationGen;
 
         variable stallCycles: integer range 0 to 3 := 0;
 
     begin
         if reset then
-            state := StartingClear;
+            state := StartingClearAndTransformationGen;
             bufferSelectInt <= '0';
             stallCycles := 0;
         elsif rising_edge(clock) then
@@ -105,15 +111,17 @@ begin
             color <= "00000";
 
             plotTriangleEn <= '0';
+            beginGenerate <= '0';
             case state is
-                when StartingClear =>
+                when StartingClearAndTransformationGen =>
                     startBufferClearEn <= '1';
-                    state := WaitingForClearToEnd;
+                    beginGenerate <= '1';
+                    state := WaitingForClearAndTransformationToEnd;
                     stallCycles := 3;
-                when WaitingForClearToEnd =>
+                when WaitingForClearAndTransformationToEnd =>
                     if stallCycles > 0 then
                         stallCycles := stallCycles - 1;
-                    elsif not clearingBufferMode and not startBufferClearEn then
+                    elsif generationDoneMode and not clearingBufferMode and not startBufferClearEn then
                         state := AddingTetrahedralTriangle1;
                     end if;
                 when AddingTetrahedralTriangle1 =>
@@ -204,7 +212,7 @@ begin
                 when FlippingBuffers =>
                     if not readingFromMemory then
                         bufferSelectInt <= not bufferSelectInt;
-                        state := StartingClear;
+                        state := StartingClearAndTransformationGen;
                     end if;
                 when Stall =>
                     state := Stall;
@@ -235,22 +243,30 @@ begin
         point3           => point3,
         normal           => normal,
         lightDirection   => (
-        x => to_signed(63,16),
-        y => to_signed(63,16),
+        x => to_signed(-63,16),
+        y => to_signed(-63,16),
         z => to_signed(240,16)
         ),
-        -- Identity matrix
-        worldToViewspace => (
-        Row1 => (x => to_signed(256,16), y => to_signed(0,16), z => to_signed(0,16)),
-        Row2 => (x => to_signed(0,16), y => to_signed(256,16), z => to_signed(0,16)),
-        Row3 => (x => to_signed(0,16), y => to_signed(0,16), z => to_signed(256,16))
-        ),
+        -- Generated matrix
+        worldToViewspace => transformationMatrix,
         pipelineEmpty    => plotterEmpty,
         writeAddress => plotterWriteAddress,
         writeData => plotterWriteData,
         readAddress => readAddress,
         readData => readData,
         writeEn => plotterWriteEn
+    );
+
+    -- The matrix calculator
+    MATRIX_GENERATOR: MatrixGenerator
+    port map (
+      clock                => clock,
+      reset                => reset,
+      thetaA               => thetaX,
+      thetaB               => thetaY,
+      beginGenerate        => beginGenerate,
+      transformationMatrix => transformationMatrix,
+      generationDoneMode   => generationDoneMode
     );
 
     -- Triangle plotter
@@ -312,6 +328,18 @@ begin
             writeEn <= plotterWriteEn;
             writeData <= plotterWriteData;
             writeAddress <= plotterWriteAddress;
+        end if;
+    end process;
+
+    CONSTANT_ROTATOR: process(clock, reset) is
+        constant ROTATION_AMOUNT: signed(15 downto 0) := to_signed(1 * 256, 16);
+    begin
+        if reset then
+            thetaY <= (others => '0');
+        elsif rising_edge(clock) then
+            if endFrameEn then
+                thetaY <= thetaY + ROTATION_AMOUNT;
+            end if;
         end if;
     end process;
 
