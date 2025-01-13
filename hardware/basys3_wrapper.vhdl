@@ -10,7 +10,10 @@ entity Basys3Wrapper is
     port (
         clk: in STD_LOGIC;
         btnC: in STD_LOGIC; -- reset
+        btnU: in STD_LOGIC;
         btnD: in STD_LOGIC;
+        btnL: in STD_LOGIC;
+        btnR: in STD_LOGIC;
         sw: in STD_LOGIC_VECTOR(15 downto 0);
 
         vgaRed: out std_logic_vector(3 downto 0);
@@ -124,7 +127,11 @@ begin
         fpsOne => digit0i,
         fpsTwo => digit1i,
         fpsThree => digit2i,
-        fpsFour => digit3i
+        fpsFour => digit3i,
+        left => btnL,
+        right => btnR,
+        up => btnU,
+        down => btnD
     );
 
     digit0 <= std_logic_vector(to_unsigned(digit0i,4));

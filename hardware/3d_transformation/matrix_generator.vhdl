@@ -137,7 +137,7 @@ begin
                     transformationMatrix <= (
                         Row1 => (                  cosB, (others => '0'),                   sinB),
                         Row2 => ( sinAsinB(23 downto 8),            cosA, -sinAcosB(23 downto 8)),
-                        Row3 => (-cosAsinB(23 downto 8),           -sinA,  cosAcosB(23 downto 8))
+                        Row3 => (-cosAsinB(23 downto 8),            sinA,  cosAcosB(23 downto 8))
                     );
                     state := Waiting;
             end case;

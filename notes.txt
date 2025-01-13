@@ -24,20 +24,18 @@ Rendering pipeline overview
 
 2. [End here if triangles normal vector Z value is negative]
 
-3. Project triangle position to screen space
+3. Convert normal vector Z value into brightness value.
 
-4. Convert normal vector Z value into brightness value.
+4. Project triangle position to screen space
 
 5. Send triangle upper half and lower half into triangle drawing queues
 
 
 
+Button directions
 
-(Each triangle plotter then gets access to it's own pixel plotter)
+left: +Y
+right: -Y
 
-
-
-
-Triangle plotting overview:
-
-The triangle plotters already have the relevant slopes due to their pipelined inputs
+up: +X 
+down: -X

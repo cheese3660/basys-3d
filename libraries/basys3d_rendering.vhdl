@@ -77,6 +77,13 @@ package basys3d_rendering is
             writeAddress: out std_logic_vector(13 downto 0);
             writeEn: out std_logic;
             writeData: out FramebufferEntry;
+
+            -- Transformation control signals
+            left: in std_logic;
+            right: in std_logic;
+            up: in std_logic;
+            down: in std_logic;
+    
     
             -- FPS Display
             fpsOne: out integer range 0 to 9;

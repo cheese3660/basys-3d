@@ -26,6 +26,12 @@ entity FrameRenderer is
         writeEn: out std_logic;
         writeData: out FramebufferEntry;
 
+        -- Transformation control signals
+        left: in std_logic;
+        right: in std_logic;
+        up: in std_logic;
+        down: in std_logic;
+
         -- FPS Display
         fpsOne: out integer range 0 to 9;
         fpsTwo: out integer range 0 to 9;
@@ -335,10 +341,20 @@ begin
         constant ROTATION_AMOUNT: signed(15 downto 0) := to_signed(1 * 256, 16);
     begin
         if reset then
+            thetaX <= (others => '0');
             thetaY <= (others => '0');
         elsif rising_edge(clock) then
             if endFrameEn then
-                thetaY <= thetaY + ROTATION_AMOUNT;
+                if left then
+                    thetaY <= thetaY + ROTATION_AMOUNT;
+                elsif right then
+                    thetaY <= thetaY - ROTATION_AMOUNT;
+                end if;
+                if up then
+                    thetaX <= thetaX + ROTATION_AMOUNT;
+                elsif down then
+                    thetaX <= thetaX - ROTATION_AMOUNT;
+                end if;
             end if;
         end if;
     end process;

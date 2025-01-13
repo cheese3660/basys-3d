@@ -69,7 +69,11 @@ begin
         writeAddress => address,
         writeData => entry,
         writeEn => writeEn,
-        bufferSelect => bufferSelect
+        bufferSelect => bufferSelect,
+        left => '0',
+        right => '0',
+        up => '0',
+        down => '0'
     );
     SCANLINE_REPORTER: process
     begin
