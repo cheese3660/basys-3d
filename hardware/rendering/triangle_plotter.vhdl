@@ -170,6 +170,8 @@ begin
             WaitingOnUpperHalf, 
             -- The plotter is waiting to be able to send data to the lower half plotter
             WaitingOnLowerHalf,
+            -- The plotter is beginning its Y division cycle
+            BeginningYDivision,
             -- The plotter is performing the y division
             PerformingYDivision,
             -- The plotter is waiting to be able to send data to both the lower half plotter and upper half plotter
@@ -340,10 +342,7 @@ begin
                             end if;
                         else
                             -- We now need to divide instead
-                            dividend(15 downto 8) <= unsigned(ay2 - ay1);
-                            divisor <= unsigned(ay3 - ay1);
-                            dividerStartEn <= '1';
-                            state := PerformingYDivision;
+                            state := BeginningYDivision;
                         end if;
                     end if;
                 when WaitingOnUpperHalf =>
@@ -387,6 +386,11 @@ begin
                         lowerEn <= '1';
                         state := Stall;
                     end if;
+                when BeginningYDivision =>
+                    dividend(15 downto 8) <= unsigned(ay2 - ay1);
+                    divisor <= unsigned(ay3 - ay1);
+                    dividerStartEn <= '1';
+                    state := PerformingYDivision;
                 when PerformingYDivision =>
                     if dividerDoneMode and not dividerStartEn then
                         tm := signed(quotient) * (ax3 - ax1);

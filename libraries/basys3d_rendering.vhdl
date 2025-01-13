@@ -312,4 +312,80 @@ package basys3d_rendering is
             readyMode: out std_logic
         );
     end component;
+
+    component ProjectionCalculator is
+        generic(
+            -- How far back we want to move the object, let's default to 64 units for our calculations (meaning something that is the furthest back we support at 32 units gets mapped to 96 units back (out of ~128 maximum))
+            Z_OFFSET: signed(15 downto 0) := to_signed(64 *  256,16);
+            -- The distance the viewer is from the screen, used to map coordinates to the screen
+            -- Calculation time, we want the maximum x value (32), at z = 0 to be displayed at 7/8 of the width of the screen by default
+            -- 64 * 7/8 = Z' * (32)/(64)
+            -- 64 * 7/8 = Z' * 1/2
+            -- 56 = Z' * 1/2
+            -- 112 = Z'
+            Z_PRIME: unsigned(15 downto 0) := to_unsigned(integer(112*real(256)), 16)
+            -- Essentially we are rendering stuff in a 64x64x64 unit cube centered at 0,0,0 with negative being towards the viewer and positive being away from the viewer
+        );
+        port (
+            -- Clock/reset
+            clock: in std_logic;
+            reset: in std_logic;
+    
+            -- Input values
+            x1in: in signed(15 downto 0);
+            y1in: in signed(15 downto 0);
+            z1in: in signed(15 downto 0);
+    
+            x2in: in signed(15 downto 0);
+            y2in: in signed(15 downto 0);
+            z2in: in signed(15 downto 0);
+    
+            x3in: in signed(15 downto 0);
+            y3in: in signed(15 downto 0);
+            z3in: in signed(15 downto 0);
+    
+            projectionBeginEn: in std_logic;
+    
+            -- Output values
+            x1out: out signed(15 downto 0);
+            y1out: out signed(15 downto 0);
+            z1out: out signed(15 downto 0);
+            
+            x2out: out signed(15 downto 0);
+            y2out: out signed(15 downto 0);
+            z2out: out signed(15 downto 0);
+    
+            x3out: out signed(15 downto 0);
+            y3out: out signed(15 downto 0);
+            z3out: out signed(15 downto 0);
+    
+            projectionDoneMode: out std_logic
+        );
+    end component;
+    component TriangleRenderer is
+        port(
+            clock: in std_logic;
+            reset: in std_logic;
+    
+            readyForTriangle: out std_logic;
+            renderTriangleEn: in std_logic;
+    
+            point1: in Vector16;
+            point2: in Vector16;
+            point3: in Vector16;
+            normal: in Vector16;
+    
+            lightDirection: in Vector16;
+    
+            worldToViewspace: in Matrix16;
+    
+            pipelineEmpty: out std_logic;
+    
+            writeAddress: out std_logic_vector(13 downto 0);
+            writeData: out FramebufferEntry;
+            readAddress: out std_logic_vector(13 downto 0);
+            readData: in FramebufferEntry;
+            writeEn: out std_logic
+        );
+    end component;
 end basys3d_rendering;
