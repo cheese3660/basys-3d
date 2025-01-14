@@ -134,7 +134,8 @@ begin
                         report "B[" & to_string(real(to_integer(projectorB.X))/real(256)) & ", " & to_string(real(to_integer(projectorB.Y))/real(256)) & ", " & to_string(real(to_integer(projectorB.Z))/real(256)) & "]";
                         report "C[" & to_string(real(to_integer(projectorC.X))/real(256)) & ", " & to_string(real(to_integer(projectorC.Y))/real(256)) & ", " & to_string(real(to_integer(projectorC.Z))/real(256)) & "]";
                         report "N[" & to_string(real(to_integer(transformedNormal.X))/real(256)) & ", " & to_string(real(to_integer(transformedNormal.Y))/real(256)) & ", " & to_string(real(to_integer(transformedNormal.Z))/real(256)) & "]";
-                        if transformedNormal.Z(15) then
+                        -- Tune backface culling
+                        if transformedNormal.Z <= 0 then
                             luminanceStartEn <= '1';
                             state := BeginningLuminanceCalculation;
                         else

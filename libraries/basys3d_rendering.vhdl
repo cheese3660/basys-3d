@@ -5,6 +5,7 @@ use ieee.numeric_std.all;
 library work;
 use work.basys3d.all;
 use work.basys3d_arithmetic.all;
+use work.basys3d_geometry.all;
 
 package basys3d_rendering is
     component TrianglePlotter is
@@ -60,6 +61,9 @@ package basys3d_rendering is
     end component;
 
     component FrameRenderer is
+        generic (
+            MAX_TRIANGLE_COUNT: integer range 0 to 65535
+        );
         port (
             clock: in std_logic;
             reset: in std_logic;
@@ -77,12 +81,17 @@ package basys3d_rendering is
             writeAddress: out std_logic_vector(13 downto 0);
             writeEn: out std_logic;
             writeData: out FramebufferEntry;
-
+    
             -- Transformation control signals
             left: in std_logic;
             right: in std_logic;
             up: in std_logic;
             down: in std_logic;
+    
+            -- Geobuffer signals
+            triangleCount: in integer range 0 to MAX_TRIANGLE_COUNT;
+            geoData: in GeoTriangle;
+            geoAddress: out integer range 0 to MAX_TRIANGLE_COUNT-1;
     
     
             -- FPS Display

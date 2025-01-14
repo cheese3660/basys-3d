@@ -5,6 +5,8 @@ use ieee.numeric_std.all;
 library work;
 use work.basys3d.all;
 use work.basys3d_rendering.all;
+use work.basys3d_geometry.all;
+use work.basys3d_communication.all;
 
 entity Basys3Wrapper is
     port (
@@ -14,6 +16,8 @@ entity Basys3Wrapper is
         btnD: in STD_LOGIC;
         btnL: in STD_LOGIC;
         btnR: in STD_LOGIC;
+        RsRx: in std_logic;
+        RsTx: out std_logic;
         sw: in STD_LOGIC_VECTOR(15 downto 0);
 
         vgaRed: out std_logic_vector(3 downto 0);
@@ -30,7 +34,11 @@ entity Basys3Wrapper is
 end Basys3Wrapper;
 
 architecture Wrapper of Basys3Wrapper is
+    -- Use this to set the max triangle count
+    constant MAX_TRIG_COUNT: integer := 4096; -- let's go with 4k triangles for now, see if that is an issue
     
+
+
     signal vgaAddress: std_logic_vector(13 downto 0);
     signal vgaData: FramebufferEntry;
     
@@ -39,6 +47,13 @@ architecture Wrapper of Basys3Wrapper is
     signal writeAddress: std_logic_vector(13 downto 0);
     signal writeData: FramebufferEntry;
     signal writeEn: std_logic;
+
+    signal triangleCount: integer range 0 to MAX_TRIG_COUNT;
+    signal geoReadAddress: integer range 0 to MAX_TRIG_COUNT-1;
+    signal geoWriteAddress: integer range 0 to MAX_TRIG_COUNT-1;
+    signal geoReadData: GeoTriangle;
+    signal geoWriteData: GeoTriangle;
+    signal geoWriteEnable: std_logic;
 
     signal scale: VgaScale;
     
@@ -93,7 +108,7 @@ begin
     
     led(14) <= bufferSelect;
     
-    led(13 downto 0) <= vgaAddress;
+    led(12 downto 0) <= std_logic_vector(to_unsigned(triangleCount,13));
     
     DUAL_BUFFER: DualBuffer port map (
         clock => clk,
@@ -109,7 +124,37 @@ begin
         writeEn => writeEn
     );
 
-    RENDERER: FrameRenderer port map(
+    GEO_BUFFER: GeoBuffer
+    generic map (
+      MAX_TRIANGLE_COUNT => MAX_TRIG_COUNT
+    )
+    port map (
+      clock        => clk,
+      readAddress  => geoReadAddress,
+      readData     => geoReadData,
+      writeAddress => geoWriteAddress,
+      writeEnable  => geoWriteEnable,
+      writeData    => geoWriteData
+    );
+
+    TRANS: Transceiver
+    generic map (
+      MAX_TRIANGLE_COUNT => MAX_TRIG_COUNT
+    )
+    port map (
+      clock           => clk,
+      reset           => btnC,
+      rx              => RsRx,
+      tx              => RsTx,
+      geoWriteAddress => geoWriteAddress,
+      geoWriteData    => geoWriteData,
+      geoWriteEn      => geoWriteEnable,
+      triangleCount   => triangleCount
+    );
+
+    RENDERER: FrameRenderer generic map(
+        MAX_TRIANGLE_COUNT => MAX_TRIG_COUNT
+    ) port map(
         clock => clk,
         reset => btnC,
 
@@ -123,6 +168,10 @@ begin
         readData => readData,
         writeData => writeData,
         writeEn => writeEn,
+
+        triangleCount => triangleCount,
+        geoAddress => geoReadAddress,
+        geoData => geoReadData,
 
         fpsOne => digit0i,
         fpsTwo => digit1i,

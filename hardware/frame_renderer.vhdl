@@ -6,8 +6,13 @@ library work;
 use work.basys3d.all;
 use work.basys3d_rendering.all;
 use work.basys3d_arithmetic.all;
+use work.basys3d_geometry.all;
+use work.basys3d_communication.all;
 
 entity FrameRenderer is
+    generic (
+        MAX_TRIANGLE_COUNT: integer range 0 to 65535
+    );
     port (
         clock: in std_logic;
         reset: in std_logic;
@@ -31,6 +36,12 @@ entity FrameRenderer is
         right: in std_logic;
         up: in std_logic;
         down: in std_logic;
+
+        -- Geobuffer signals
+        triangleCount: in integer range 0 to MAX_TRIANGLE_COUNT;
+        geoData: in GeoTriangle;
+        geoAddress: out integer range 0 to MAX_TRIANGLE_COUNT-1;
+
 
         -- FPS Display
         fpsOne: out integer range 0 to 9;
@@ -82,16 +93,10 @@ begin
     TRIANGLE_CONTROLLER: process(clock, reset)
         type controller_state_t is (
             StartingClearAndTransformationGen,
-            WaitingForClearAndTransformationToEnd, 
-
-            -- Let's hard code all the triangles
-            AddingTetrahedralTriangle1,
-            AddingTetrahedralTriangle2,
-            AddingTetrahedralTriangle3,
-            AddingTetrahedralTriangle4,
-            AddingTetrahedralTriangle5,
-            AddingTetrahedralTriangle6,
-
+            WaitingForClearAndTransformationToEnd,
+            ReadingTriangle,
+            WaitingForRead,
+            AddingToPipeline,
             WaitingForRender, 
             FlippingBuffers, 
             Stall);
@@ -99,6 +104,8 @@ begin
         variable state: controller_state_t := StartingClearAndTransformationGen;
 
         variable stallCycles: integer range 0 to 3 := 0;
+
+        variable triangleIndex: integer range 0 to MAX_TRIANGLE_COUNT-1 := 0;
 
     begin
         if reset then
@@ -128,85 +135,32 @@ begin
                     if stallCycles > 0 then
                         stallCycles := stallCycles - 1;
                     elsif generationDoneMode and not clearingBufferMode and not startBufferClearEn then
-                        state := AddingTetrahedralTriangle1;
+                        if triangleCount /= 0 then
+                            triangleIndex := 0;
+                            state := ReadingTriangle;
+                        else
+                            state := WaitingForRender;
+                        end if;
                     end if;
-                when AddingTetrahedralTriangle1 =>
-                    if stallCycles > 0 then
-                        stallCycles := stallCycles - 1;
-                    elsif plotterReadyMode then
-                        point1 <= CreateVector16(0, 5792, 0);
-                        point2 <= CreateVector16(-5792, -5792, 0);
-                        point3 <= CreateVector16(0, -5792, -5792);
-                        normal <= CreateVector16(-170, 85, -170);
+                when ReadingTriangle =>
+                    geoAddress <= triangleIndex;
+                    state := WaitingForRead;
+                when WaitingForRead =>
+                    state := AddingToPipeline;
+                when AddingToPipeline =>
+                    if plotterReadyMode then
+                        point1 <= geoData.A;
+                        point2 <= geoData.B;
+                        point3 <= geoData.C;
+                        normal <= geoData.N;
                         plotTriangleEn <= '1';
-                        report "Finished adding first triangle!";
-                        state := AddingTetrahedralTriangle2;
-                        stallCycles := 3;
-                    end if;
-                when AddingTetrahedralTriangle2 =>
-                    if stallCycles > 0 then
-                        stallCycles := stallCycles - 1;
-                    elsif plotterReadyMode then
-                        point1 <= CreateVector16(0, 5792, 0);
-                        point2 <= CreateVector16(0, -5792, -5792);
-                        point3 <= CreateVector16(5792, -5792, 0);
-                        normal <= CreateVector16(170, 85, -170);
-                        plotTriangleEn <= '1';
-                        report "Finished adding second triangle!";
-                        state := AddingTetrahedralTriangle3;
-                        stallCycles := 3;
-                    end if;
-                when AddingTetrahedralTriangle3 =>
-                    if stallCycles > 0 then
-                        stallCycles := stallCycles - 1;
-                    elsif plotterReadyMode then
-                        point1 <= CreateVector16(0, 5792, 0);
-                        point2 <= CreateVector16(0, -5792, 5792);
-                        point3 <= CreateVector16(-5792, -5792, 0);
-                        normal <= CreateVector16(-170, 85, 170);
-                        plotTriangleEn <= '1';
-                        report "Finished adding third triangle!";
-                        state := AddingTetrahedralTriangle4;
-                        stallCycles := 3;
-                    end if;
-                when AddingTetrahedralTriangle4 =>
-                    if stallCycles > 0 then
-                        stallCycles := stallCycles - 1;
-                    elsif plotterReadyMode then
-                        point1 <= CreateVector16(0, 5792, 0);
-                        point2 <= CreateVector16(5792, -5792, 0);
-                        point3 <= CreateVector16(0, -5792, 5792);
-                        normal <= CreateVector16(170, 85, 170);
-                        plotTriangleEn <= '1';
-                        report "Finished adding fourth triangle!";
-                        state := AddingTetrahedralTriangle5;
-                        stallCycles := 3;
-                    end if;
-                when AddingTetrahedralTriangle5 =>
-                    if stallCycles > 0 then
-                        stallCycles := stallCycles - 1;
-                    elsif plotterReadyMode then
-                        point1 <= CreateVector16(0, -5792, -5792);
-                        point2 <= CreateVector16(-5792, -5792, 0);
-                        point3 <= CreateVector16(5792, -5792, 0);
-                        normal <= CreateVector16(0, -256, 0);
-                        plotTriangleEn <= '1';
-                        report "Finished adding fifth triangle!";
-                        state := AddingTetrahedralTriangle6;
-                        stallCycles := 3;
-                    end if;
-                when AddingTetrahedralTriangle6 =>
-                    if stallCycles > 0 then
-                        stallCycles := stallCycles - 1;
-                    elsif plotterReadyMode then
-                        point1 <= CreateVector16(0, -5792, 5792);
-                        point2 <= CreateVector16(5792, -5792, 0);
-                        point3 <= CreateVector16(-5792, -5792, 0);
-                        normal <= CreateVector16(0, -256, 0);
-                        plotTriangleEn <= '1';
-                        report "Finished adding sixth triangle!";
-                        state := WaitingForRender;
-                        stallCycles := 3;
+                        if triangleIndex /= triangleCount-1 then
+                            triangleIndex := triangleIndex + 1;
+                            state := ReadingTriangle;
+                        else
+                            stallCycles := 3;
+                            state := WaitingForRender;
+                        end if;
                     end if;
                 when WaitingForRender =>
                     if stallCycles > 0 then
