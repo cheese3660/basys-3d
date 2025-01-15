@@ -7,6 +7,7 @@ use work.basys3d.all;
 use work.basys3d_rendering.all;
 use work.basys3d_geometry.all;
 use work.basys3d_communication.all;
+use work.basys3d_arithmetic.all;
 
 entity Basys3Wrapper is
     port (
@@ -40,10 +41,10 @@ architecture Wrapper of Basys3Wrapper is
 
 
     signal vgaAddress: std_logic_vector(13 downto 0);
-    signal vgaData: FramebufferEntry;
+    signal vgaData: Color;
     
     signal readAddress: std_logic_vector(13 downto 0);
-    signal readData: FramebufferEntry;
+    signal readData: signed(15 downto 0);
     signal writeAddress: std_logic_vector(13 downto 0);
     signal writeData: FramebufferEntry;
     signal writeEn: std_logic;

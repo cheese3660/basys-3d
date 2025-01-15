@@ -58,10 +58,10 @@ begin
 
         variable uart_state: uart_state_t := Waiting;
 
-        type geo_array_t is array(0 to 23) of std_logic_vector(7 downto 0);
+        type geo_array_t is array(0 to 26) of std_logic_vector(7 downto 0);
 
         variable geo_array: geo_array_t;
-        variable geo_array_index: integer range 0 to 23;
+        variable geo_array_index: integer range 0 to 26;
 
         variable read_trig_low: std_logic_vector(7 downto 0);
         variable read_trig_high: std_logic_vector(7 downto 0);
@@ -76,6 +76,7 @@ begin
             combined(15 downto 8) := b;
             return combined;
         end function;
+
 
         -- Stall in between sends for a certain amount of cycles
         variable stallCycles: integer range 0 to 3 := 3;
@@ -159,13 +160,14 @@ begin
                 when ReadingTriangle =>
                     if dataReady then
                         geo_array(geo_array_index) := dataOut;
-                        if geo_array_index = 23 then
+                        if geo_array_index = 26 then
                             geoWriteAddress <= geo_addr;
                             geoWriteData <= (
                                 A => (signed(combineLe(geo_array(0),geo_array(1))),signed(combineLe(geo_array(2),geo_array(3))),signed(combineLe(geo_array(4),geo_array(5)))),
                                 B => (signed(combineLe(geo_array(6),geo_array(7))),signed(combineLe(geo_array(8),geo_array(9))),signed(combineLe(geo_array(10),geo_array(11)))),
                                 C => (signed(combineLe(geo_array(12),geo_array(13))),signed(combineLe(geo_array(14),geo_array(15))),signed(combineLe(geo_array(16),geo_array(17)))),
-                                N => (signed(combineLe(geo_array(18),geo_array(19))),signed(combineLe(geo_array(20),geo_array(21))),signed(combineLe(geo_array(22),geo_array(23))))
+                                N => (signed(combineLe(geo_array(18),geo_array(19))(9 downto 0)),signed(combineLe(geo_array(20),geo_array(21))(9 downto 0)),signed(combineLe(geo_array(22),geo_array(23))(9 downto 0))),
+                                COL => (unsigned(geo_array(24)(4 downto 0)),unsigned(geo_array(25)(4 downto 0)),unsigned(geo_array(26)(4 downto 0)))
                             );
                             geoWriteEn <= '1';
                             if geo_addr = trigCountInternal-1 then

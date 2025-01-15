@@ -5,6 +5,19 @@ use ieee.numeric_std.all;
 package basys3d_arithmetic is
     type divider_array_t is array(natural range <>) of signed;
 
+    type Color is record
+        R: unsigned(4 downto 0);
+        G: unsigned(4 downto 0);
+        B: unsigned(4 downto 0);
+    end record;
+
+    -- Should be enough to store normal vectors
+    type Vector10 is record
+        X: signed(9 downto 0);
+        Y: signed(9 downto 0);
+        Z: signed(9 downto 0);
+    end record;
+
     type Vector16 is record
         X: signed(15 downto 0);
         Y: signed(15 downto 0);
@@ -38,11 +51,27 @@ package basys3d_arithmetic is
         v: in Vector32
     ) return Vector16;
 
+    function ToVector16(
+        v: in Vector10
+    ) return Vector16;
+
     function CreateVector16(
         x: in integer;
         y: in integer;
         z: in integer
     ) return Vector16;
+
+    function CreateVector10(
+        x: in integer;
+        y: in integer;
+        z: in integer
+    ) return Vector10;
+
+    function CreateColor(
+        r: in integer;
+        g: in integer;
+        b: in integer
+    ) return Color;
 
     type TrigCalcType is (
         Sine,
@@ -100,6 +129,17 @@ package body basys3d_arithmetic is
         );
     end function;
 
+    function ToVector16(
+        v: in Vector10
+    ) return Vector16 is
+    begin
+        return (
+            X => resize(v.X, 16),
+            Y => resize(v.Y, 16),
+            Z => resize(v.Z, 16)
+        );
+    end function;
+
     function CreateVector16(
         x: in integer;
         y: in integer;
@@ -110,6 +150,33 @@ package body basys3d_arithmetic is
             X => to_signed(x, 16),
             Y => to_signed(y, 16),
             Z => to_signed(z, 16)
+        );
+    end function;
+
+    function CreateVector10(
+        x: in integer;
+        y: in integer;
+        z: in integer
+    ) return Vector10 is
+    begin
+        return (
+            X => to_signed(x, 10),
+            Y => to_signed(y, 10),
+            Z => to_signed(z, 10)
+        );
+    end function;
+
+    
+    function CreateColor(
+        r: in integer;
+        g: in integer;
+        b: in integer
+    ) return Color is
+    begin
+        return (
+            R => to_unsigned(r,5),
+            G => to_unsigned(g,5),
+            B => to_unsigned(b,5)
         );
     end function;
 end basys3d_arithmetic;

@@ -4,6 +4,7 @@ use ieee.numeric_std.all;
 
 library work;
 use work.basys3d.all;
+use work.basys3d_arithmetic.all;
 
 
 -- Now let's add all the signals that the VGA driver needs to actually draw stuff
@@ -14,7 +15,7 @@ entity VgaDriver is
 
         -- This is the address that the VGA circuitry is reading from
         addr: out std_logic_vector(13 downto 0);
-        fbe: in FramebufferEntry;
+        fbe: in Color;
 
         -- This is the current scale of the VGA display
         scale: in VgaScale;
@@ -104,11 +105,15 @@ begin
         variable scanline_bits: std_logic_vector(9 downto 0);
         variable pixel_bits: std_logic_vector(9 downto 0);
 
-        variable brighter_color: std_logic_vector(3 downto 0);
+        variable brighter_color_r: std_logic_vector(3 downto 0);
+        variable brighter_color_g: std_logic_vector(3 downto 0);
+        variable brighter_color_b: std_logic_vector(3 downto 0);
 
         variable drawFromMemory: boolean;
         variable inBorder: boolean;
         variable incrementStep: boolean;
+
+        variable useBrighter: boolean;
     begin
         if reset then
             scanline := 0;
@@ -123,7 +128,10 @@ begin
             v_syncing := scanline >= vsync_begin and scanline < vsync_end;
             scanline_bits := std_logic_vector(to_unsigned(scanline,10));
             pixel_bits := std_logic_vector(to_unsigned(pixel,10));
-            brighter_color := std_logic_vector(unsigned(fbe.color(4 downto 1)) + 1);
+            brighter_color_r := std_logic_vector(fbe.R(4 downto 1) + 1);
+            brighter_color_g := std_logic_vector(fbe.G(4 downto 1) + 1);
+            brighter_color_b := std_logic_vector(fbe.B(4 downto 1) + 1);
+            useBrighter := (pixel_bits(0) xor scanline_bits(0)) = '1';
 
             case scale is
                 when SingleRes =>
@@ -158,14 +166,20 @@ begin
                     vSync <= '1';
 
                     if drawFromMemory then
-                        if (fbe.color(0) and (pixel_bits(0) xor scanline_bits(0))) = '1' and fbe.color /= "11111" then
-                            red <= brighter_color;
-                            green <= brighter_color;
-                            blue <= brighter_color;
+                        if useBrighter and fbe.R(0) = '1' and fbe.R /= "11111" then
+                            red <= brighter_color_r;
                         else
-                            red <= fbe.color(4 downto 1);
-                            green <= fbe.color(4 downto 1);
-                            blue <= fbe.color(4 downto 1);
+                            red <= std_logic_vector(fbe.R(4 downto 1));
+                        end if;
+                        if useBrighter and fbe.G(0) = '1' and fbe.G /= "11111" then
+                            green <= brighter_color_g;
+                        else
+                            green <= std_logic_vector(fbe.G(4 downto 1));
+                        end if;
+                        if useBrighter and fbe.B(0) = '1' and fbe.B /= "11111" then
+                            blue <= brighter_color_b;
+                        else
+                            blue <= std_logic_vector(fbe.B(4 downto 1));
                         end if;
                     else
                         red <= "0000";

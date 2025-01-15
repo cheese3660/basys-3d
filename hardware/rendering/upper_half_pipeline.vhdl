@@ -25,7 +25,7 @@ entity UpperHalfPipeline is
         y3: in signed(7 downto 0);
         z3: in signed(15 downto 0);
 
-        color: in std_logic_vector(4 downto 0);
+        trigColor: in Color;
 
         hasValue: in std_logic;
     
@@ -37,7 +37,7 @@ entity UpperHalfPipeline is
 
         address: out std_logic_vector(13 downto 0);
         writeData: out FramebufferEntry;
-        readData: in FramebufferEntry;
+        readData: in signed(15 downto 0);
         plotEn: out std_logic
     );
 end UpperHalfPipeline;
@@ -51,7 +51,7 @@ architecture Procedural of UpperHalfPipeline is
         startZ: signed(15 downto 0);
         startY: signed(7 downto 0);
         endY: signed(7 downto 0);
-        trigColor: std_logic_vector(4 downto 0);
+        trigColor: Color;
     end record;
 
     -- Divider values
@@ -134,7 +134,7 @@ begin
                     associatedIn.startZ <= z1;
                     associatedIn.startY <= y1;
                     associatedIn.endY <= y2;
-                    associatedIn.trigColor <= color;
+                    associatedIn.trigColor <= trigColor;
 
                     divideHasValue <= '1';
                 else

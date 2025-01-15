@@ -22,9 +22,13 @@ entity TriangleRenderer is
         point1: in Vector16;
         point2: in Vector16;
         point3: in Vector16;
-        normal: in Vector16;
+        -- Reduce the size of these
+        normal: in Vector10;
 
-        lightDirection: in Vector16;
+        lightDirection: in Vector10;
+
+        -- Add a chroma value to be used
+        trigColor: in Color;
 
         worldToViewspace: in Matrix16;
 
@@ -33,7 +37,7 @@ entity TriangleRenderer is
         writeAddress: out std_logic_vector(13 downto 0);
         writeData: out FramebufferEntry;
         readAddress: out std_logic_vector(13 downto 0);
-        readData: in FramebufferEntry;
+        readData: in signed(15 downto 0);
         writeEn: out std_logic
     );
     
@@ -50,11 +54,16 @@ architecture Procedural of TriangleRenderer is
     signal transformPoint1: Vector16 := (others => (others => '0'));
     signal transformPoint2: Vector16 := (others => (others => '0'));
     signal transformPoint3: Vector16 := (others => (others => '0'));
-    signal transformNormal: Vector16 := (others => (others => '0'));
+    signal transformNormal: Vector10 := (others => (others => '0'));
 
-    signal transformLightPos: Vector16 := (others => (others => '0'));
-    signal transformedNormal: Vector16 := (others => (others => '0'));
-    signal computedLightAmount: signed(15 downto 0) := (others => '0');
+    signal transformLightPos: Vector10 := (others => (others => '0'));
+    signal transformedNormal: Vector10 := (others => (others => '0'));
+    signal computedLightAmount: unsigned(8 downto 0) := (others => '0');
+
+    -- Chroma variables
+    signal chromaUpdate: std_logic;
+    signal chromaIn: Color := (others => (others => '0'));
+    signal chromaOut: Color := (others => (others => '0'));
 
     -- Projector variables
     signal projectionBeginEn: std_logic;
@@ -70,7 +79,7 @@ architecture Procedural of TriangleRenderer is
 
     -- Plotter variables
     signal plotterEmpty: std_logic;
-    signal color: std_logic_vector(4 downto 0);
+    signal plotterColor: Color;
     signal plotTriangleEn: std_logic;
     signal plotterReadyMode: std_logic;
 
@@ -111,6 +120,8 @@ begin
             projectionBeginEn <= '0';
             plotTriangleEn <= '0';
             controllerEmpty <= '0';
+            chromaUpdate <= '0';
+            luminanceStartEn <= '0';
             case state is
                 when Waiting =>
                     readyForTriangle <= '1';
@@ -122,6 +133,7 @@ begin
                         transformPoint3 <= point3;
                         transformNormal <= normal;
                         transformLightPos <= lightDirection;
+                        chromaIn <= trigColor;
                         multiplicationStartEn <= '1';
                         state := BeginningTransformation;
                     end if;
@@ -148,6 +160,7 @@ begin
                     if luminanceDoneMode then
                         report "Computed luminance value of " & to_string(real(to_integer(computedLightAmount))/256);
                         projectionBeginEn <= '1';
+                        chromaUpdate <= '1';
                         state := BeginnningProjection;
                     end if;
                 when BeginnningProjection =>
@@ -159,7 +172,7 @@ begin
                         report "B[" & to_string(to_integer(plotterX2) / 256) & ", " & to_string(to_integer(plotterY2)) & ", " & to_string(to_integer(plotterZ2)/256) & "]";
                         report "C[" & to_string(to_integer(plotterX3) / 256) & ", " & to_string(to_integer(plotterY3)) & ", " & to_string(to_integer(plotterZ3)/256) & "]";
                         if plotterReadyMode then
-                            color <= std_logic_vector(computedLightAmount(7 downto 3));
+                            plotterColor <= chromaOut;
                             plotTriangleEn <= '1';
                             state := BeginningPlot;
                         else
@@ -168,7 +181,7 @@ begin
                     end if;
                 when WaitingOnPlotter =>
                     if plotterReadyMode then
-                        color <= std_logic_vector(computedLightAmount(7 downto 3));
+                        plotterColor <= chromaOut;
                         plotTriangleEn <= '1';
                         state := BeginningPlot;
                     else
@@ -180,6 +193,28 @@ begin
         end if;
     end process;
 
+    CHROMA_CALCULATOR: process(clock)
+        variable multR: unsigned(13 downto 0);
+        variable multG: unsigned(13 downto 0);
+        variable multB: unsigned(13 downto 0);
+    begin
+        if rising_edge(clock) then
+            multR := (others => '0');
+            multG := (others => '0');
+            multB := (others => '0');
+            if chromaUpdate then
+                multR := chromaIn.R * computedLightAmount;
+                multG := chromaIn.G * computedLightAmount;
+                multB := chromaIn.B * computedLightAmount;
+                chromaOut <= (
+                    R => multR(12 downto 8),
+                    G => multG(12 downto 8),
+                    B => multB(12 downto 8)
+                );
+            end if;
+        end if;
+    end process;
+
     LUMINANCE_CALCULATOR: process(clock, reset)
         type luminanceState is (
             SUMMING_FIRST,
@@ -188,18 +223,18 @@ begin
             CLAMPING_LOW,
             CLAMPING_HIGH
         );
-        variable l1: signed(31 downto 0);
-        variable l2: signed(31 downto 0);
-        variable l3: signed(31 downto 0);
+        variable l1: signed(19 downto 0);
+        variable l2: signed(19 downto 0);
+        variable l3: signed(19 downto 0);
         variable s: luminanceState;
     begin
         if reset then
             luminanceDoneMode <= '1';
         elsif rising_edge(clock) then
             if luminanceDoneMode and luminanceStartEn then
-                l1 := transformedNormal.X * lightDirection.X;
-                l2 := transformedNormal.Y * lightDirection.Y;
-                l3 := transformedNormal.Z * lightDirection.Z;
+                l1 := transformedNormal.X * transformLightPos.X;
+                l2 := transformedNormal.Y * transformLightPos.Y;
+                l3 := transformedNormal.Z * transformLightPos.Z;
                 s := SUMMING_FIRST;
                 luminanceDoneMode <= '0';
             elsif not luminanceDoneMode then
@@ -214,13 +249,13 @@ begin
                         l1 := -l1;
                         s := CLAMPING_LOW;
                     when CLAMPING_LOW =>
-                        l1 := maximum(l1,to_signed(0,32));
+                        l1 := maximum(l1,to_signed(0,20));
                         s := CLAMPING_HIGH;
                     when CLAMPING_HIGH =>
-                        l1 := minimum(l1,to_signed(1 * 65536, 32));
-                        computedLightAmount <= l1(23 downto 8);
+                        l1 := minimum(l1,to_signed(1 * 65536, 20));
+                        -- Should only need 9 bits of the computed light amount to be used in the next steps
+                        computedLightAmount <= unsigned(l1(16 downto 8));
                         luminanceDoneMode <= '1';
-
                 end case;
             end if;
         end if;
@@ -269,17 +304,17 @@ begin
         variable p3z3 : signed(31 downto 0);
         
         -- Normal
-        variable nx1 : signed(31 downto 0);
-        variable nx2 : signed(31 downto 0);
-        variable nx3 : signed(31 downto 0);
+        variable nx1 : signed(25 downto 0);
+        variable nx2 : signed(25 downto 0);
+        variable nx3 : signed(25 downto 0);
 
-        variable ny1 : signed(31 downto 0);
-        variable ny2 : signed(31 downto 0);
-        variable ny3 : signed(31 downto 0);
+        variable ny1 : signed(25 downto 0);
+        variable ny2 : signed(25 downto 0);
+        variable ny3 : signed(25 downto 0);
 
-        variable nz1 : signed(31 downto 0);
-        variable nz2 : signed(31 downto 0);
-        variable nz3 : signed(31 downto 0);
+        variable nz1 : signed(25 downto 0);
+        variable nz2 : signed(25 downto 0);
+        variable nz3 : signed(25 downto 0);
 
         -- Sum state
         variable onSecondSum: boolean;
@@ -386,9 +421,9 @@ begin
                     nz1 := nz2 + nz1;
 
                     transformedNormal <= (
-                        X => signed(nx1(23 downto 8)),
-                        Y => signed(ny1(23 downto 8)),
-                        Z => signed(nz1(23 downto 8))
+                        X => signed(nx1(17 downto 8)),
+                        Y => signed(ny1(17 downto 8)),
+                        Z => signed(nz1(17 downto 8))
                     );
 
                     multiplicationDoneMode <= '1';
@@ -464,7 +499,7 @@ begin
       x3             => plotterX3,
       y3             => plotterY3,
       z3             => plotterZ3,
-      color          => color,
+      trigColor      => plotterColor,
       plotTriangleEn => plotTriangleEn,
       readyMode      => plotterReadyMode,
       pipelineEmpty  => plotterEmpty,

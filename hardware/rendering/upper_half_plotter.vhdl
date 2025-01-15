@@ -5,6 +5,7 @@ use ieee.numeric_std.all;
 library work;
 use work.basys3d.all;
 use work.basys3d_rendering.all;
+use work.basys3d_arithmetic.all;
 
 
 -- This will plot upper half triangles, given the precomputed information
@@ -27,7 +28,7 @@ entity UpperHalfPlotter is
         startY: in signed(7 downto 0);
         endY: in signed(7 downto 0);
 
-        trigColor: in std_logic_vector(4 downto 0);
+        trigColor: in Color;
 
         beginPlotEn: in std_logic;
 
@@ -36,7 +37,7 @@ entity UpperHalfPlotter is
 
         address: out std_logic_vector(13 downto 0);
         writeData: out FramebufferEntry;
-        readData: in FramebufferEntry;
+        readData: in signed(15 downto 0);
         plotEn: out std_logic;
         pipelineEmpty: out std_logic;
         readyMode: out std_logic
@@ -54,7 +55,7 @@ architecture Procedural of UpperHalfPlotter is
     signal scanlineZ0: signed(15 downto 0);
     signal scanlineZ1: signed(15 downto 0);
 
-    signal scanlineColor: std_logic_vector(4 downto 0);
+    signal scanlineColor: Color;
 
     signal startScanlineEn: std_logic;
 
@@ -87,7 +88,7 @@ begin
         variable y: signed(7 downto 0);
         variable maxY: signed(7 downto 0);
 
-        variable color: std_logic_vector(4 downto 0);
+        variable storedColor: Color;
 
         variable lastIter: boolean;
     begin
@@ -100,7 +101,7 @@ begin
             scanlineX1 <= (others => '0');
             scanlineZ0 <= (others => '0');
             scanlineZ1 <= (others => '0');
-            scanlineColor <= (others => '0');
+            scanlineColor <= (others => (others => '0'));
             startScanlineEn <= '0';
             case state is
                 when Waiting =>
@@ -119,7 +120,7 @@ begin
                         z1 := startZ;
                         y := startY;
                         maxY := endY;
-                        color := trigColor;
+                        storedColor := trigColor;
                         state := ComparingAndClamping;
                     end if;
                 when ComparingAndClamping =>
@@ -148,7 +149,7 @@ begin
                             scanlineX1 <= cx1;
                             scanlineZ0 <= z0;
                             scanlineZ1 <= z1;
-                            scanlineColor <= color;
+                            scanlineColor <= storedColor;
                             startScanlineEn <= '1';
                         end if;
                         if lastIter then
@@ -167,7 +168,7 @@ begin
                             scanlineX1 <= cx1;
                             scanlineZ0 <= z0;
                             scanlineZ1 <= z1;
-                            scanlineColor <= color;
+                            scanlineColor <= storedColor;
                             startScanlineEn <= '1';
                         end if;
                         if lastIter then

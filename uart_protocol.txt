@@ -10,5 +10,5 @@ Request max triangle count - [0x01]
 
 Transmit object - [0x02, {u16 triangle count}]
     Opens a transmission of an object file, with the triangle count in the header, the board will respond with 0xFF if the triangle count is zero or too much, or 0x02 if it can receive that triangle count
-    Then the computer will transmit said amount of triangles, formatted like the following [{i16 a.x}, {i16 a.y}, {i16 a.z}, {i16 b.x}, {i16 b.y}, {i16 b.z}, {i16 c.x}, {i16 c.y}, {i16 c.z}, {i16 n.x}, {i16 n.y}, {i16 n.z}]
+    Then the computer will transmit said amount of triangles, formatted like the following [{i16 a.x}, {i16 a.y}, {i16 a.z}, {i16 b.x}, {i16 b.y}, {i16 b.z}, {i16 c.x}, {i16 c.y}, {i16 c.z}, {i16 n.x}, {i16 n.y}, {i16 n.z}, {u8 col.r}, {u8 col.g}, {u8 col.b}]
 

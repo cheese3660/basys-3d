@@ -25,7 +25,7 @@ package basys3d_rendering is
             y3: in signed(7 downto 0);
             z3: in signed(15 downto 0);
     
-            color: in std_logic_vector(4 downto 0);
+            trigColor: in Color;
     
             plotTriangleEn: in std_logic;
     
@@ -35,7 +35,7 @@ package basys3d_rendering is
             writeAddress: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
             readAddress: out std_logic_vector(13 downto 0);
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             writeEn: out std_logic
         );
     end component;
@@ -76,7 +76,7 @@ package basys3d_rendering is
             bufferSelect: out std_logic;
     
             readAddress: out std_logic_vector(13 downto 0);
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
     
             writeAddress: out std_logic_vector(13 downto 0);
             writeEn: out std_logic;
@@ -120,7 +120,7 @@ package basys3d_rendering is
             y3: in signed(7 downto 0);
             z3: in signed(15 downto 0);
     
-            color: in std_logic_vector(4 downto 0);
+            trigColor: in Color;
     
             hasValue: in std_logic;
         
@@ -132,7 +132,7 @@ package basys3d_rendering is
     
             address: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             plotEn: out std_logic
         );
     end component;
@@ -154,7 +154,7 @@ package basys3d_rendering is
             y3: in signed(7 downto 0);
             z3: in signed(15 downto 0);
     
-            color: in std_logic_vector(4 downto 0);
+            trigColor: in Color;
     
             hasValue: in std_logic;
         
@@ -166,7 +166,7 @@ package basys3d_rendering is
     
             address: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             plotEn: out std_logic
         );
     end component;
@@ -176,10 +176,23 @@ package basys3d_rendering is
             clock: in std_logic;
     
             readAddress: in std_logic_vector(13 downto 0);
-            readData: out FramebufferEntry;
+            readData: out Color;
             writeAddress: in std_logic_vector(13 downto 0);
             writeEnable: in std_logic;
-            writeData: in FramebufferEntry
+            writeData: in Color
+        );
+    end component;
+
+    component ZBuffer is
+        port(
+            clock: in std_logic;
+    
+            readAddress: in std_logic_vector(13 downto 0);
+    
+            readData: out signed(15 downto 0);
+            writeAddress: in std_logic_vector(13 downto 0);
+            writeEnable: in std_logic;
+            writeData: in signed(15 downto 0)
         );
     end component;
 
@@ -190,10 +203,10 @@ package basys3d_rendering is
             currentWriteBuffer: in std_logic;
     
             vgaAddress: in std_logic_vector(13 downto 0);
-            outVga: out FramebufferEntry;
+            outVga: out Color;
     
             readAddress: in std_logic_vector(13 downto 0);
-            readData: out FramebufferEntry;
+            readData: out signed(15 downto 0);
     
             writeAddress: in std_logic_vector(13 downto 0);
     
@@ -209,7 +222,7 @@ package basys3d_rendering is
     
             -- This is the address that the VGA circuitry is reading from
             addr: out std_logic_vector(13 downto 0);
-            fbe: in FramebufferEntry;
+            fbe: in Color;
     
             -- This is the current scale of the VGA display
             scale: in VgaScale;
@@ -240,7 +253,7 @@ package basys3d_rendering is
             scanlineZ0: in signed(15 downto 0);
             scanlineZ1: in signed(15 downto 0);
     
-            scanlineColor: in std_logic_vector(4 downto 0);
+            scanlineColor: in Color;
     
             scanlinePlotEn: in std_logic;
     
@@ -249,7 +262,7 @@ package basys3d_rendering is
     
             address: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             plotEn: out std_logic;
     
             pipelineEmpty: out std_logic;
@@ -277,7 +290,7 @@ package basys3d_rendering is
             startY: in signed(7 downto 0);
             endY: in signed(7 downto 0);
     
-            trigColor: in std_logic_vector(4 downto 0);
+            trigColor: in Color;
     
             beginPlotEn: in std_logic;
     
@@ -286,7 +299,7 @@ package basys3d_rendering is
     
             address: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             plotEn: out std_logic;
             pipelineEmpty: out std_logic;
             readyMode: out std_logic
@@ -294,7 +307,6 @@ package basys3d_rendering is
     end component;
 
     component LowerHalfPlotter is
-
         Port(
             clock: in std_logic;
             reset: in std_logic;
@@ -313,7 +325,7 @@ package basys3d_rendering is
             startY: in signed(7 downto 0);
             endY: in signed(7 downto 0);
     
-            trigColor: in std_logic_vector(4 downto 0);
+            trigColor: in Color;
     
             beginPlotEn: in std_logic;
     
@@ -322,7 +334,7 @@ package basys3d_rendering is
     
             address: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             plotEn: out std_logic;
             pipelineEmpty: out std_logic;
             readyMode: out std_logic
@@ -389,9 +401,13 @@ package basys3d_rendering is
             point1: in Vector16;
             point2: in Vector16;
             point3: in Vector16;
-            normal: in Vector16;
+            -- Reduce the size of these
+            normal: in Vector10;
     
-            lightDirection: in Vector16;
+            lightDirection: in Vector10;
+    
+            -- Add a chroma value to be used
+            trigColor: in Color;
     
             worldToViewspace: in Matrix16;
     
@@ -400,7 +416,7 @@ package basys3d_rendering is
             writeAddress: out std_logic_vector(13 downto 0);
             writeData: out FramebufferEntry;
             readAddress: out std_logic_vector(13 downto 0);
-            readData: in FramebufferEntry;
+            readData: in signed(15 downto 0);
             writeEn: out std_logic
         );
     end component;

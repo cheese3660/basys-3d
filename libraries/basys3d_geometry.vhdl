@@ -10,7 +10,8 @@ package basys3d_geometry is
         A: Vector16;
         B: Vector16;
         C: Vector16;
-        N: Vector16;
+        N: Vector10;
+        COL: Color;
     end record;
 
     procedure ReportTrig(trig: in Geotriangle);
@@ -38,6 +39,7 @@ package body basys3d_geometry is
         report "A[" & to_string(to_integer(trig.A.X)) & ", " & to_string(to_integer(trig.A.Y)) & ", " & to_string(to_integer(trig.A.Z)) & "], " &
                "B[" & to_string(to_integer(trig.B.X)) & ", " & to_string(to_integer(trig.B.Y)) & ", " & to_string(to_integer(trig.B.Z)) & "], " &
                "C[" & to_string(to_integer(trig.C.X)) & ", " & to_string(to_integer(trig.C.Y)) & ", " & to_string(to_integer(trig.C.Z)) & "], " &
-               "N[" & to_string(to_integer(trig.N.X)) & ", " & to_string(to_integer(trig.N.Y)) & ", " & to_string(to_integer(trig.N.Z)) & "];";
+               "N[" & to_string(to_integer(trig.N.X)) & ", " & to_string(to_integer(trig.N.Y)) & ", " & to_string(to_integer(trig.N.Z)) & "], " &
+               "COL[" & to_string(to_integer(trig.COL.R)) & ", " & to_string(to_integer(trig.COL.G)) & ", " & to_string(to_integer(trig.COL.B)) & "];";
     end procedure;
 end basys3d_geometry;

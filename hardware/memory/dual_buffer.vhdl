@@ -5,6 +5,9 @@ use ieee.numeric_std.all;
 library work;
 use work.basys3d.all;
 use work.basys3d_rendering.all;
+use work.basys3d_arithmetic.all;
+
+-- Has 2 color buffers, and 1 z-buffer, this should be all that is needed
 
 entity DualBuffer is
     port(
@@ -13,10 +16,10 @@ entity DualBuffer is
         currentWriteBuffer: in std_logic;
 
         vgaAddress: in std_logic_vector(13 downto 0);
-        outVga: out FramebufferEntry;
+        outVga: out Color;
 
         readAddress: in std_logic_vector(13 downto 0);
-        readData: out FramebufferEntry;
+        readData: out signed(15 downto 0);
 
         writeAddress: in std_logic_vector(13 downto 0);
 
@@ -29,7 +32,7 @@ architecture Procedural of DualBuffer is
 
     signal buffer1ReadAddress: std_logic_vector(13 downto 0);
 
-    signal buffer1ReadData: FramebufferEntry;
+    signal buffer1ReadData: Color;
 
     signal buffer1WriteAddress: std_logic_vector(13 downto 0);
 
@@ -37,18 +40,19 @@ architecture Procedural of DualBuffer is
 
     signal buffer2ReadAddress: std_logic_vector(13 downto 0);
 
-    signal buffer2ReadData: FramebufferEntry;
+    signal buffer2ReadData: Color;
 
     signal buffer2WriteAddress: std_logic_vector(13 downto 0);
 
     signal buffer2WriteEn: std_logic;
 
+    signal zReadData: signed(15 downto 0);
 begin
     BUFFER_SELECT: process(all)
     begin
         if currentWriteBuffer = '0' then
-            buffer1ReadAddress <= readAddress;
-            readData <= buffer1ReadData;
+            buffer1ReadAddress <= (others => '0');
+            readData <= zReadData;
             buffer2ReadAddress <= vgaAddress;
             outVga <= buffer2ReadData;
             buffer1WriteAddress <= writeAddress;
@@ -56,8 +60,8 @@ begin
             buffer2WriteAddress <= (others => '0');
             buffer2WriteEn <= '0';
         else
-            buffer2ReadAddress <= readAddress;
-            readData <= buffer2ReadData;
+            buffer2ReadAddress <= (others => '0');
+            readData <= zReadData;
             buffer1ReadAddress <= vgaAddress;
             outVga <= buffer1ReadData;
             buffer2WriteAddress <= writeAddress;
@@ -67,13 +71,23 @@ begin
         end if;
     end process;
     
+    Z_BUFFER: ZBuffer
+    port map (
+      clock        => clock,
+      readAddress  => readAddress,
+      readData     => zReadData,
+      writeAddress => writeAddress,
+      writeEnable  => writeEn,
+      writeData    => writeData.depth
+    );
+    
     BUFFER_1: Framebuffer port map (
         clock => clock,
         readAddress => buffer1ReadAddress,
         readData => buffer1ReadData,
         writeAddress => buffer1WriteAddress,
         writeEnable => buffer1WriteEn,
-        writeData => writeData
+        writeData => writeData.color
     );
     
     BUFFER_2: Framebuffer port map (
@@ -82,6 +96,6 @@ begin
         readData => buffer2ReadData,
         writeAddress => buffer2WriteAddress,
         writeEnable => buffer2WriteEn,
-        writeData => writeData
+        writeData => writeData.color
     );
 end Procedural;

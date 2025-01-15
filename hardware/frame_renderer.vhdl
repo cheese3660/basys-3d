@@ -25,7 +25,7 @@ entity FrameRenderer is
         bufferSelect: out std_logic;
 
         readAddress: out std_logic_vector(13 downto 0);
-        readData: in FramebufferEntry;
+        readData: in signed(15 downto 0);
 
         writeAddress: out std_logic_vector(13 downto 0);
         writeEn: out std_logic;
@@ -54,8 +54,6 @@ end FrameRenderer;
 architecture Procedural of FrameRenderer is
     -- Scanline drawing signals
 
-    signal color: std_logic_vector(4 downto 0);
-
     signal plotTriangleEn: std_logic;
     signal plotterReadyMode: std_logic;
 
@@ -64,7 +62,8 @@ architecture Procedural of FrameRenderer is
     signal point1: Vector16;
     signal point2: Vector16;
     signal point3: Vector16;
-    signal normal: Vector16;
+    signal normal: Vector10;
+    signal trigColor: Color;
 
     -- Pixel drawing signals
     signal plotterWriteAddress: std_logic_vector(13 downto 0);
@@ -121,8 +120,6 @@ begin
             point3 <= (others => (others => '0'));
             normal <= (others => (others => '0'));
 
-            color <= "00000";
-
             plotTriangleEn <= '0';
             beginGenerate <= '0';
             case state is
@@ -153,6 +150,7 @@ begin
                         point2 <= geoData.B;
                         point3 <= geoData.C;
                         normal <= geoData.N;
+                        trigColor <= geoData.COL;
                         plotTriangleEn <= '1';
                         if triangleIndex /= triangleCount-1 then
                             triangleIndex := triangleIndex + 1;
@@ -202,10 +200,11 @@ begin
         point2           => point2,
         point3           => point3,
         normal           => normal,
+        trigColor => trigColor,
         lightDirection   => (
-        x => to_signed(-63,16),
-        y => to_signed(-63,16),
-        z => to_signed(240,16)
+        x => to_signed(-63,10),
+        y => to_signed(-63,10),
+        z => to_signed(240,10)
         ),
         -- Generated matrix
         worldToViewspace => transformationMatrix,
@@ -281,7 +280,7 @@ begin
             writeEn <= '1';
             writeData <= (
                 depth => "0111111111111111",
-                color => "00000"
+                color => (others => (others => '0'))
             );
             writeAddress <= std_logic_vector(clearAddress);
         else

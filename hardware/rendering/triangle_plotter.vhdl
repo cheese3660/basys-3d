@@ -18,6 +18,7 @@ use ieee.numeric_std.all;
 library work;
 use work.basys3d.all;
 use work.basys3d_rendering.all;
+use work.basys3d_arithmetic.all;
 
 entity TrianglePlotter is
     Port(
@@ -36,7 +37,7 @@ entity TrianglePlotter is
         y3: in signed(7 downto 0);
         z3: in signed(15 downto 0);
 
-        color: in std_logic_vector(4 downto 0);
+        trigColor: in Color;
 
         plotTriangleEn: in std_logic;
 
@@ -46,7 +47,7 @@ entity TrianglePlotter is
         writeAddress: out std_logic_vector(13 downto 0);
         writeData: out FramebufferEntry;
         readAddress: out std_logic_vector(13 downto 0);
-        readData: in FramebufferEntry;
+        readData: in signed(15 downto 0);
         writeEn: out std_logic
     );
 end TrianglePlotter;
@@ -76,7 +77,7 @@ architecture Procedural of TrianglePlotter is
     signal y3upper: signed(7 downto 0);
     signal z3upper: signed(15 downto 0);
 
-    signal upperColor: std_logic_vector(4 downto 0);
+    signal upperColor: Color;
     signal upperEn: std_logic;
 
     -- Lower half pipeline
@@ -92,7 +93,7 @@ architecture Procedural of TrianglePlotter is
     signal y3lower: signed(7 downto 0);
     signal z3lower: signed(15 downto 0);
 
-    signal lowerColor: std_logic_vector(4 downto 0);
+    signal lowerColor: Color;
     signal lowerEn: std_logic;
 
     -- Pipeline state signals
@@ -159,7 +160,7 @@ begin
         variable z4: signed(15 downto 0);
 
         -- color
-        variable storedColor: std_logic_vector(4 downto 0);
+        variable storedColor: Color;
 
         -- State machine types
 
@@ -205,7 +206,7 @@ begin
             y3upper <= (others => '0');
             z3upper <= (others => '0');
 
-            upperColor <= (others => '0');
+            upperColor <= (others => (others => '0'));
 
             upperEn <= '0';
 
@@ -221,7 +222,7 @@ begin
             y3lower <= (others => '0');
             z3lower <= (others => '0');
 
-            lowerColor <= (others => '0');
+            lowerColor <= (others => (others => '0'));
 
             lowerEn <= '0';
 
@@ -246,7 +247,7 @@ begin
                         az1 := z1;
                         az2 := z2;
                         az3 := z3;
-                        storedColor := color;
+                        storedColor := trigColor;
 
                         -- Sort the parameters
                         if ay1 > ay2 then
@@ -572,7 +573,7 @@ begin
                 writeAddress <= (others => '0');
                 writeData <= (
                     depth => (others => '0'),
-                    color => (others => '0')
+                    color => (others => (others => '0'))
                 );
                 writeEn <= '0';
         end case;
@@ -594,7 +595,7 @@ begin
         y3 => y3upper,
         z3 => z3upper,
 
-        color => upperColor,
+        trigColor => upperColor,
 
         hasValue => upperEn,
 
@@ -625,7 +626,7 @@ begin
         y3 => y3lower,
         z3 => z3lower,
 
-        color => lowerColor,
+        trigColor => lowerColor,
 
         hasValue => lowerEn,
 

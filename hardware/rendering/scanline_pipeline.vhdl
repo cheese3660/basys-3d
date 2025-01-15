@@ -17,7 +17,7 @@ entity ScanlinePipeline is
         scanlineZ0: in signed(15 downto 0);
         scanlineZ1: in signed(15 downto 0);
 
-        scanlineColor: in std_logic_vector(4 downto 0);
+        scanlineColor: in Color;
 
         scanlinePlotEn: in std_logic;
 
@@ -26,7 +26,7 @@ entity ScanlinePipeline is
 
         address: out std_logic_vector(13 downto 0);
         writeData: out FramebufferEntry;
-        readData: in FramebufferEntry;
+        readData: in signed(15 downto 0);
         plotEn: out std_logic;
 
         pipelineEmpty: out std_logic;
@@ -52,7 +52,7 @@ architecture Procedural of ScanlinePipeline is
     type x_array_t is array (FIRST_STAGE to LAST_STAGE) of signed(7 downto 0);
     type y_array_t is array (FIRST_STAGE to LAST_STAGE) of unsigned(6 downto 0);
     type z_array_t is array (FIRST_STAGE to LAST_STAGE) of signed(15 downto 0);
-    type color_array_t is array (FIRST_STAGE to LAST_STAGE) of std_logic_vector(4 downto 0);
+    type color_array_t is array (FIRST_STAGE to LAST_STAGE) of Color;
     type fixed16_array_t is array(FIRST_STAGE to LAST_STAGE) of signed(15 downto 0);
     type divisor_array_t is array(FIRST_STAGE to LAST_STAGE) of signed(7 downto 0);
 
@@ -78,7 +78,7 @@ architecture Procedural of ScanlinePipeline is
         x1: signed(7 downto 0);
         y: unsigned(6 downto 0);
         z: signed(15 downto 0);
-        color: std_logic_vector(4 downto 0);
+        lineColor: Color;
     end record;
 
     -- Divider values
@@ -219,7 +219,7 @@ begin
                 scanlineAssociatedIn.x1 <= x1_pipeline(ARITHMETIC_STAGE);   
                 scanlineAssociatedIn.y <= y_pipeline(ARITHMETIC_STAGE);
                 scanlineAssociatedIn.z <= z_pipeline(ARITHMETIC_STAGE);
-                scanlineAssociatedIn.color <= color_pipeline(ARITHMETIC_STAGE);
+                scanlineAssociatedIn.lineColor <= color_pipeline(ARITHMETIC_STAGE);
                 dividendIn(0) <= zDiff;
                 divisorIn(0) <= xDiff;
                 divideHasValue <= '1';
@@ -258,7 +258,7 @@ begin
         variable x: unsigned(6 downto 0);
         variable maxX: unsigned(6 downto 0);
         variable y: unsigned(6 downto 0);
-        variable color: std_logic_vector(4 downto 0);
+        variable currentColor: Color;
         variable z: signed(15 downto 0);
         variable zs: signed(15 downto 0);
         variable writing: boolean;
@@ -267,19 +267,20 @@ begin
             drawCanAccept <= '1';
         elsif rising_edge(clock) then
             plotEn <= '0';
-            writeData.color <= color;
+            writeData.color <= currentColor;
             writeData.depth <= z;
             address(13 downto 7) <= std_logic_vector(y);
             if not drawCanAccept then
                 if writing then
                     if onWriteCycle then
-                        if z < readData.depth then
+                        if z < readData then
                             plotEn <= '1';
                         end if;
                         if x = maxX then
                             drawCanAccept <= '1';
                         else
                             x := x + 1;
+                            z := z + zs;
                         end if;
                         writing := false;
                     end if;
@@ -301,7 +302,7 @@ begin
                     maxX := (others => '0');
                 end if;
                 y := scanlineAssociatedOut.y;
-                color := scanlineAssociatedOut.color;
+                currentColor := scanlineAssociatedOut.lineColor;
                 z := scanlineAssociatedOut.z;
                 zs := quotientOut(0);
                 writing := false;
